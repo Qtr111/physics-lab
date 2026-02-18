@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physic_Lab</title>
+    <style>
+        /* 你的原有样式，完全不变 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background: #0c0f14;
+            color: #fff;
+            padding: 40px 30px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 500;
+            background: linear-gradient(to right, #ffffff, #b0e0ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stats {
+            background: rgba(20,30,40,0.6);
+            backdrop-filter: blur(8px);
+            padding: 8px 20px;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #ccddee;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(0,200,255,0.3);
+        }
+
+        .section-name {
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #aaddff, #88ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-right: 15px;
+        }
+
+        .section-count {
+            background: rgba(0,200,255,0.1);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            color: #aae0ff;
+            border: 1px solid rgba(0,200,255,0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .card {
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            background-color: #1a1e24;
+            box-shadow: 0 20px 30px -10px rgba(0,0,0,0.5);
+            transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
+            cursor: pointer;
+            aspect-ratio: 1 / 1.2;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .card-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.6s ease;
+            z-index: 1;
+        }
+
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, 
+                        rgba(0,0,0,0.2) 0%, 
+                        rgba(0,0,0,0.6) 70%, 
+                        rgba(0,0,0,0.85) 100%);
+            z-index: 2;
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 3;
+            padding: 28px 22px;
+            color: white;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .card-title {
+            font-size: 1.7rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.2;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .card-desc {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 15px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(4px);
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: rgba(255,255,255,0.9);
+            border: 1px solid rgba(255,255,255,0.2);
+            text-transform: uppercase;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 30px 40px -12px rgba(0,150,255,0.3);
+            border-color: rgba(100,200,255,0.3);
+        }
+
+        .card:hover .card-bg {
+            transform: scale(1.08);
+        }
+
+        .card:hover .card-content {
+            transform: translateY(-5px);
+        }
+
+        .empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 80px 20px;
+            color: #8899aa;
+            background: rgba(255,255,255,0.02);
+            border-radius: 30px;
+            border: 1px dashed rgba(255,255,255,0.1);
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #5f6c7a;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>物理仿真实验室</h1>
+            <div class="stats" id="total-count">加载中...</div>
+        </div>
+
+        <div id="sections-container"></div>
+
+        <div class="footer"></div>
+    </div>
+
+    <script>
+        // ---------- 模型库配置（已添加 models/ 前缀）----------
+        const models = [
+            // 必修一
+            {
+                file: "models/匀变速直线运动.html",   // ✅ 修改点
+                title: "匀变速直线运动",
+                desc: "速度 / 位移 / 时间关系",
+                bgImage: "./images/motion.jpg",
+                tag: "运动学",
+                category: "必修一"
+            },
+            {
+                file: "models/自由落体.html",
+                title: "自由落体",
+                desc: "重力加速度模拟",
+                bgImage: "",
+                tag: "运动学",
+                category: "必修一"
+            },
+            // 必修二
+            {
+                file: "models/平抛运动.html",
+                title: "平抛运动",
+                desc: "水平/竖直分量合成",
+                bgImage: "./images/projectile.jpg",
+                tag: "曲线运动",
+                category: "必修二"
+            },
+            {
+                file: "models/圆周运动.html",
+                title: "圆周运动",
+                desc: "向心力 / 角速度",
+                bgImage: "",
+                tag: "曲线运动",
+                category: "必修二"
+            },
+            // 必修三
+            {
+                file: "models/电流的磁效应/电流的磁效应.html",
+                title: "通电长直导线产生的磁场",
+                desc: "通电导线/磁感线/ 磁场分布",
+                bgImage: "./images/电流的磁效应.png",
+                tag: "电磁学",
+                category: "必修三"
+            },
+            // 选择性必修一
+            {
+                file: "models/双缝干涉3.html",
+                title: "杨氏双缝干涉",
+                desc: "波长 / 缝距 / 屏距可调，动态条纹",
+                bgImage: "./images/double-slit.png",
+                tag: "光学 · 干涉",
+                category: "选择性必修一"
+            },
+            {
+                file: "models/波的干涉.html",
+                title: "机械波的干涉",
+                desc: "波长 / 频率 / 振幅可调",
+                bgImage: "./images/波的干涉.png",
+                tag: "机械波",
+                category: "选择性必修一"
+            },
+            // 选择性必修二
+            {
+                file: "models/质谱仪.html",
+                title: "质谱仪",
+                desc: "带电粒子在磁场中偏转的应用",
+                bgImage: "./images/质谱仪.png",
+                tag: "洛伦兹力/同位素分离",
+                category: "选择性必修二"
+            },
+ {
+                file: "models/回旋加速器.html",
+                title: "回旋加速器",
+                desc: "带电粒子在磁场中偏转的应用",
+                bgImage: "./images/回旋加速器.png",
+                tag: "洛伦兹力/高能物理",
+                category: "选择性必修二"
+            },
+ {
+                file: "models/电磁流量计.html",
+                title: "电磁流量计",
+                desc: "洛伦兹力与现代科技",
+                bgImage: "./images/电磁流量计.png",
+                tag: "洛伦兹力/电场力",
+                category: "选择性必修二"
+            },
+            // 选择性必修三
+            {
+                file: "models/衰变.html",
+                title: "粒子在磁场中的衰变",
+                desc: "α衰变 /β衰变 / 磁场",
+                bgImage: "./images/衰变.png",
+                tag: "量子物理",
+                category: "选择性必修三"
+            }
+        ];
+
+        // ---------- 定义教材分类顺序 ----------
+        const categories = [
+            "必修一",
+            "必修二", 
+            "必修三",
+            "选择性必修一",
+            "选择性必修二",
+            "选择性必修三"
+        ];
+
+        // ---------- 按分类分组 ----------
+        function groupByCategory(models) {
+            const groups = {};
+            categories.forEach(cat => { groups[cat] = []; });
+            models.forEach(model => {
+                const cat = model.category;
+                if (groups[cat]) {
+                    groups[cat].push(model);
+                } else {
+                    if (!groups["其他"]) groups["其他"] = [];
+                    groups["其他"].push(model);
+                }
+            });
+            return groups;
+        }
+
+        // ---------- 渲染单个卡片 ----------
+        function renderCard(model) {
+            let bgStyle = '';
+            if (model.bgImage) {
+                bgStyle = `background-image: url('${model.bgImage}');`;
+            } else {
+                const gradients = [
+                    'linear-gradient(145deg, #0f2027, #203a43, #2c5364)',
+                    'linear-gradient(145deg, #1d2671, #5c2580)',
+                    'linear-gradient(145deg, #134e5e, #71b280)',
+                    'linear-gradient(145deg, #373b44, #4286f4)',
+                    'linear-gradient(145deg, #283048, #859398)'
+                ];
+                const randomGrad = gradients[Math.floor(Math.random() * gradients.length)];
+                bgStyle = `background-image: ${randomGrad};`;
+            }
+
+            return `
+                <div class="card" onclick="window.open('${model.file}', '_blank')">
+                    <div class="card-bg" style="${bgStyle}"></div>
+                    <div class="card-overlay"></div>
+                    <div class="card-content">
+                        <div class="card-title">${model.title}</div>
+                        <div class="card-desc">${model.desc || '交互式物理仿真'}</div>
+                        <span class="card-tag">${model.tag || model.category}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ---------- 渲染全部分区 ----------
+        function renderAllSections() {
+            const container = document.getElementById('sections-container');
+            const groups = groupByCategory(models);
+            
+            let totalModelCount = 0;
+            let html = '';
+
+            categories.forEach(cat => {
+                const catModels = groups[cat] || [];
+                if (catModels.length === 0) return;
+
+                totalModelCount += catModels.length;
+
+                let cardsHtml = '';
+                catModels.forEach(model => {
+                    cardsHtml += renderCard(model);
+                });
+
+                html += `
+                    <div class="section">
+                        <div class="section-title">
+                            <span class="section-name">${cat}</span>
+                            <span class="section-count">${catModels.length} 个实验</span>
+                        </div>
+                        <div class="grid">
+                            ${cardsHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (groups["其他"] && groups["其他"].length > 0) {
+                totalModelCount += groups["其他"].length;
+                html += `
+                    <div class="section">
+                        <div class="section-title">
+                            <span class="section-name">📦 其他</span>
+                            <span class="section-count">${groups["其他"].length} 个实验</span>
+                        </div>
+                        <div class="grid">
+                            ${groups["其他"].map(renderCard).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html || '<div class="empty">✨ 还没有添加任何模型，请在代码中编辑 <strong>models</strong> 数组</div>';
+            document.getElementById('total-count').textContent = `共 ${totalModelCount} 个模型`;
+        }
+
+        renderAllSections();
+    </script>
+</body>
+</html>

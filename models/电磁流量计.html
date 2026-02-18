@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>电磁流量计</title>
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --primary-glow: rgba(0, 242, 255, 0.4);
+            --danger: #ff2d55;
+            --bg: #050a14;
+            --panel: rgba(22, 32, 51, 0.9);
+            --magnetic: #facc15;
+        }
+
+        body { 
+            background-color: var(--bg); 
+            background-image: radial-gradient(circle at 50% 50%, #101e38 0%, #050a14 100%);
+            font-family: 'Microsoft YaHei', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; 
+            color: #e2e8f0; margin: 0; min-height: 100vh; padding: 20px;
+        }
+
+        .header { margin-bottom: 20px; text-align: center; }
+        .header h1 { 
+            margin: 0; font-size: 28px; letter-spacing: 4px; 
+            background: linear-gradient(to bottom, #fff, var(--primary));
+            -webkit-background-clip: text; -webkit-fill-color: transparent;
+            color: var(--primary); /* 回退方案 */
+        }
+
+        .main-container { 
+            display: flex; gap: 30px; 
+            background: var(--panel); padding: 30px; 
+            border-radius: 24px; border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.8);
+        }
+
+        canvas { 
+            background: #000; border: 1px solid rgba(0,242,255,0.2); 
+            border-radius: 16px;
+        }
+
+        .side-panel { width: 280px; display: flex; flex-direction: column; gap: 20px; }
+
+        .meter-card {
+            background: rgba(0,0,0,0.5); border: 2px solid var(--primary);
+            padding: 20px; border-radius: 20px; text-align: center;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+        #uDisplay { font-family: 'Consolas', monospace; font-size: 44px; color: var(--primary); font-weight: bold; }
+        .unit-text { font-size: 14px; color: var(--primary); opacity: 0.7; }
+
+        .control-card { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        label { display: block; font-size: 14px; margin-bottom: 10px; color: #94a3b8; }
+        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { 
+            padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        #playBtn { background: var(--primary); color: #000; }
+        #resetBtn { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+        button:hover { transform: scale(1.05); }
+
+        .legend { font-size: 13px; color: #94a3b8; line-height: 2; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>电磁流量计</h1>
+    </div>
+
+    <div class="main-container">
+        <canvas id="simCanvas" width="800" height="500"></canvas>
+
+        <div class="side-panel">
+            <div class="meter-card">
+                <div style="font-size: 12px; letter-spacing: 2px; margin-bottom: 5px;">实时电压 U<sub>ba</sub></div>
+                <div id="uDisplay">0.00</div>
+                <div class="unit-text">VOLTS (V)</div>
+            </div>
+
+            <div class="control-card">
+                <label>系统流速设定 (v): <span id="vVal" style="color:var(--primary)">3.0</span> m/s</label>
+                <input type="range" id="vSlider" min="1" max="10" step="0.5" value="3">
+            </div>
+
+            <div class="btn-group">
+                <button id="playBtn">暂停演示</button>
+                <button id="resetBtn">重置实验</button>
+            </div>
+
+            <div class="control-card legend">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; background:var(--danger); border-radius:50%;"></span> 正电荷 (+)
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; background:#4d94ff; border-radius:50%;"></span> 负电荷 (-)
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="color:var(--magnetic); font-weight:bold; font-size:18px;">×</span> 匀强磁场 (垂直向里)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const vSlider = document.getElementById('vSlider');
+        const playBtn = document.getElementById('playBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const uDisplay = document.getElementById('uDisplay');
+
+        let ions = [];
+        let voltage = 0;
+        let isRunning = true;
+
+        const centerX = 420, centerY = 250;
+        const pipeWidth = 560;
+        const B_fixed = 0.8; 
+        const D_fixed = 15; // 管道内径对应像素
+
+        let getV = () => parseFloat(vSlider.value);
+        let getTargetU = () => getV() * B_fixed * D_fixed * 8;
+
+        class Ion {
+            constructor() {
+                this.x = 800; // 从最右侧生成
+                this.y = centerY + (Math.random() - 0.5) * (D_fixed * 10 - 20);
+                this.type = Math.random() > 0.5 ? 1 : -1;
+                this.size = 6;
+                this.isCaptured = false;
+            }
+
+            update() {
+                if (this.isCaptured) return;
+                
+                let v = getV();
+                let targetU = getTargetU();
+                let pipeRight = centerX + pipeWidth/2;
+                let pipeLeft = centerX - pipeWidth/2;
+
+                this.x -= v; // 水流向左
+
+                // 只有在管道范围 [pipeLeft, pipeRight] 内才受洛伦兹力和电场力影响
+                if (this.x < pipeRight && this.x > pipeLeft) {
+                    let fLorentz = this.type * (B_fixed * v * 0.9);
+                    let fElectric = -this.type * (voltage / targetU) * (B_fixed * v * 0.9);
+                    this.y += (fLorentz + fElectric);
+
+                    // 碰撞检测：只能在管道长度范围内打到管壁
+                    let halfD = (D_fixed * 10) / 2;
+                    if (Math.abs(this.y - centerY) >= halfD) {
+                        this.isCaptured = true;
+                        this.y = (this.y > centerY) ? centerY + halfD : centerY - halfD;
+                        if (voltage < targetU) voltage += 5.0; 
+                    }
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                const color = this.type === 1 ? '#ff2d55' : '#4d94ff';
+                ctx.fillStyle = color;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function drawVoltmeterIcon() {
+            const mx = 100, my = 100, r = 50;
+            // 绘制圆形表盘
+            ctx.strokeStyle = '#00f2ff';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.stroke();
+            
+            ctx.fillStyle = 'rgba(0, 242, 255, 0.1)';
+            ctx.fill();
+
+            ctx.fillStyle = '#00f2ff';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('V', mx - 8, my + 10);
+
+            // 物理连线
+            const h = D_fixed * 10;
+            ctx.setLineDash([5, 5]);
+            // a端 (负极, 灰蓝色)
+            ctx.strokeStyle = '#4d94ff';
+            ctx.beginPath();
+            ctx.moveTo(mx + r, my);
+            ctx.lineTo(centerX, my);
+            ctx.lineTo(centerX, centerY - h/2);
+            ctx.stroke();
+
+            // b端 (正极, 红色)
+            ctx.strokeStyle = '#ff2d55';
+            ctx.beginPath();
+            ctx.moveTo(mx, my + r);
+            ctx.lineTo(mx, 430);
+            ctx.lineTo(centerX, 430);
+            ctx.lineTo(centerX, centerY + h/2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 接点
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(centerX, centerY - h/2, 4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(centerX, centerY + h/2, 4, 0, Math.PI*2); ctx.fill();
+        }
+
+        function drawEnvironment() {
+            const w = pipeWidth, h = D_fixed * 10;
+            
+            // 网格底纹
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,500); ctx.stroke(); }
+
+            // 绘制管道
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(centerX - w/2, centerY - h/2, w, h);
+
+            // 磁场符号
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 18px Arial';
+            for(let i=0; i<8; i++) for(let j=0; j<2; j++)
+                ctx.fillText('×', (centerX-w/2+35)+i*70, (centerY-h/4)+j*(h/2)+5);
+
+            // 电荷积累视觉 (仅限管道范围)
+            let intensity = (voltage / getTargetU()) * 0.6;
+            ctx.fillStyle = `rgba(0, 100, 255, ${intensity})`; // 上a-
+            ctx.fillRect(centerX-w/2, centerY-h/2-6, w, 6);
+            ctx.fillStyle = `rgba(255, 45, 85, ${intensity})`; // 下b+
+            ctx.fillRect(centerX-w/2, centerY+h/2, w, 6);
+
+            ctx.fillStyle = '#94a3b8'; ctx.font = '12px Arial';
+            ctx.fillText('a端 (-)', centerX - 20, centerY - h/2 - 15);
+            ctx.fillText('b端 (+)', centerX - 20, centerY + h/2 + 25);
+        }
+
+        function animate() {
+            if (isRunning) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('vVal').innerText = getV().toFixed(1);
+                uDisplay.innerText = (voltage / 10).toFixed(2);
+
+                drawEnvironment();
+                drawVoltmeterIcon();
+
+                if (Math.random() > 0.45) ions.push(new Ion());
+
+                for (let i = ions.length - 1; i >= 0; i--) {
+                    ions[i].update();
+                    ions[i].draw();
+                    // 飞出左侧边界移除
+                    if (ions[i].x < 50) ions.splice(i, 1);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        playBtn.onclick = () => {
+            isRunning = !isRunning;
+            playBtn.innerText = isRunning ? "暂停系统" : "恢复运行";
+            playBtn.style.background = isRunning ? "" : "var(--danger)";
+        };
+        resetBtn.onclick = () => { voltage = 0; ions = []; };
+        animate();
+    </script>
+</body>
+</html>

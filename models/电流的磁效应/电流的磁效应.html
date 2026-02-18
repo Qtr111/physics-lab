@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通电长直导线磁场可视化</title>
+    <script src="./three.min.js"></script>
+<script src="./OrbitControls.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a1a;
+            color: #e6e6e6;
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(20, 20, 40, 0.8);
+            border-radius: 10px;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            color: #4cc9f0;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            color: #a0a0c0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .visualization-section {
+            background: rgba(20, 20, 40, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(76, 201, 240, 0.1);
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 600px;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            background: #050510;
+        }
+        
+        #scene-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(30, 30, 50, 0.6);
+            border-radius: 10px;
+        }
+        
+        .control-group {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-group h4 {
+            color: #4cc9f0;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .checkbox-group input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .slider-container {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(40, 40, 60, 0.5);
+            border-radius: 8px;
+            display: none; /* 初始隐藏 */
+        }
+        
+        .slider-group {
+            margin-bottom: 8px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .slider-label span:last-child {
+            color: #4cc9f0;
+            font-weight: bold;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #333355;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4cc9f0;
+            cursor: pointer;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        button {
+            background: linear-gradient(90deg, #4361ee, #3a0ca3);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+        }
+        
+        .current {
+            background: #f72585;
+        }
+        
+        .field-line {
+            background: #4cc9f0;
+        }
+        
+        .direction-arrow {
+            background: #ff9e00;
+        }
+        
+        .vertical-ring-orange {
+            background: #ff9e00;
+        }
+        
+        .vertical-ring-blue {
+            background: #4cc9f0;
+        }
+        
+        .vertical-ring-purple {
+            background: #9d4edd;
+        }
+        
+        .axis-x {
+            background: #ff4444;
+        }
+        
+        .axis-y {
+            background: #44ff44;
+        }
+        
+        .axis-z {
+            background: #4444ff;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            color: #8888aa;
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>通电长直导线磁场可视化</h1>
+            <p class="subtitle">三维磁场分布与电流方向可视化 | XYZ轴 | 7层垂直磁感线平面 | 线圈位置控制</p>
+        </header>
+        
+        <section class="visualization-section">
+            <div class="canvas-container">
+                <div id="scene-container"></div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <h4>显示控制</h4>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="show-direction-arrows">
+                        <label for="show-direction-arrows">磁感线方向</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="show-orange-ring">
+                        <label for="show-orange-ring">线圈1 (橙色)</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="show-blue-ring">
+                        <label for="show-blue-ring">线圈2 (蓝色)</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="show-purple-ring">
+                        <label for="show-purple-ring">线圈3 (紫色)</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="show-axes" checked>
+                        <label for="show-axes">XYZ坐标轴</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="show-field-lines" checked>
+                        <label for="show-field-lines">磁感线</label>
+                    </div>
+                </div>
+                
+                <!-- 橙色线圈位置控制 -->
+                <div class="control-group">
+                    <h4>线圈1位置控制</h4>
+                    <div class="slider-container" id="orange-ring-controls">
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>X轴位置</span>
+                                <span id="orange-x-value">4.0</span>
+                            </div>
+                            <input type="range" id="orange-x-slider" min="-8" max="8" step="0.1" value="4">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Y轴位置</span>
+                                <span id="orange-y-value">0.0</span>
+                            </div>
+                            <input type="range" id="orange-y-slider" min="-4" max="4" step="0.1" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Z轴位置</span>
+                                <span id="orange-z-value">0.0</span>
+                            </div>
+                            <input type="range" id="orange-z-slider" min="-8" max="8" step="0.1" value="0">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 蓝色线圈位置控制 -->
+                <div class="control-group">
+                    <h4>线圈2位置控制</h4>
+                    <div class="slider-container" id="blue-ring-controls">
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>X轴位置</span>
+                                <span id="blue-x-value">-4.0</span>
+                            </div>
+                            <input type="range" id="blue-x-slider" min="-8" max="8" step="0.1" value="-4">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Y轴位置</span>
+                                <span id="blue-y-value">0.0</span>
+                            </div>
+                            <input type="range" id="blue-y-slider" min="-4" max="4" step="0.1" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Z轴位置</span>
+                                <span id="blue-z-value">0.0</span>
+                            </div>
+                            <input type="range" id="blue-z-slider" min="-8" max="8" step="0.1" value="0">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 紫色线圈位置控制 -->
+                <div class="control-group">
+                    <h4>线圈3位置控制</h4>
+                    <div class="slider-container" id="purple-ring-controls">
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>X轴位置</span>
+                                <span id="purple-x-value">0.0</span>
+                            </div>
+                            <input type="range" id="purple-x-slider" min="-8" max="8" step="0.1" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Y轴位置</span>
+                                <span id="purple-y-value">0.0</span>
+                            </div>
+                            <input type="range" id="purple-y-slider" min="-4" max="4" step="0.1" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Z轴位置</span>
+                                <span id="purple-z-value">3.0</span>
+                            </div>
+                            <input type="range" id="purple-z-slider" min="-8" max="8" step="0.1" value="3">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color current"></div>
+                    <span>通电导线</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color field-line"></div>
+                    <span>磁感线</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color direction-arrow"></div>
+                    <span>磁场方向</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color axis-x"></div>
+                    <span>X轴</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color axis-y"></div>
+                    <span>Y轴</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color axis-z"></div>
+                    <span>Z轴</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color vertical-ring-orange"></div>
+                    <span>线圈1</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color vertical-ring-blue"></div>
+                    <span>线圈2</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color vertical-ring-purple"></div>
+                    <span>线圈3</span>
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>通电长直导线磁场3D可视化 | 基于Three.js构建 | 7层垂直磁感线平面 | 线圈位置可控</p>
+        </footer>
+    </div>
+
+    <script>
+        // 主Three.js场景设置
+        let scene, camera, renderer, controls;
+        let wire, fieldLines = [], directionArrows = [];
+        let currentSymbols = [], orangeRing = null, blueRing = null, purpleRing = null;
+        let axesHelper = null;
+        let showDirectionArrows = false, showOrangeRing = false, showBlueRing = false, 
+            showPurpleRing = false, showAxes = true, showFieldLines = true;
+        
+        // 七个垂直平面的高度 - 更密集的分布
+        const VERTICAL_PLANE_HEIGHTS = [-5.0, -3.5, -2.0, 0, 2.0, 3.5, 5.0];
+        
+        // 初始相机位置
+        const INITIAL_CAMERA_POSITION = new THREE.Vector3(10, 8, 10);
+        
+        // 线圈初始位置
+        const ORANGE_RING_INITIAL_POSITION = { x: 4.0, y: 0, z: 0 };
+        const BLUE_RING_INITIAL_POSITION = { x: -4.0, y: 0, z: 0 };
+        const PURPLE_RING_INITIAL_POSITION = { x: 0, y: 0, z: 3.0 };
+        
+        // 初始化Three.js场景
+        function init() {
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510);
+            scene.fog = new THREE.Fog(0x050510, 5, 25);
+            
+            // 创建相机
+            const container = document.getElementById('scene-container');
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.copy(INITIAL_CAMERA_POSITION);
+            
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            
+            // 添加轨道控制器 - 启用右键平移
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 3;
+            controls.maxDistance = 30;
+            controls.enablePan = true; // 启用右键平移
+            
+            // 添加光源
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 15);
+            scene.add(directionalLight);
+            
+            // 创建XYZ轴
+            createAxes();
+            
+            // 创建导线和电流符号
+            createWire();
+            createCurrentSymbols();
+            
+            // 创建七层垂直同心圆磁场线
+            createVerticalFieldLines();
+            
+            // 创建磁场方向箭头
+            createDirectionArrows();
+            
+            // 创建三个垂直参考环
+            createOrangeRing();
+            createBlueRing();
+            createPurpleRing();
+            
+            // 创建加粗的底部网格
+            createGrid();
+            
+            // 设置UI事件监听
+            setupEventListeners();
+            
+            // 添加窗口大小调整监听
+            window.addEventListener('resize', onWindowResize);
+            
+            // 开始动画循环
+            animate();
+        }
+        
+        // 创建XYZ坐标轴
+        function createAxes() {
+            // 创建坐标轴组
+            axesHelper = new THREE.Group();
+            
+            // X轴 (红色)
+            const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-10, 0, 0),
+                new THREE.Vector3(10, 0, 0)
+            ]);
+            const xAxisMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xff4444,
+                linewidth: 2
+            });
+            const xAxis = new THREE.Line(xAxisGeometry, xAxisMaterial);
+            axesHelper.add(xAxis);
+            
+            // Y轴 (绿色)
+            const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, -10, 0),
+                new THREE.Vector3(0, 10, 0)
+            ]);
+            const yAxisMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x44ff44,
+                linewidth: 2
+            });
+            const yAxis = new THREE.Line(yAxisGeometry, yAxisMaterial);
+            axesHelper.add(yAxis);
+            
+            // Z轴 (蓝色)
+            const zAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, -10),
+                new THREE.Vector3(0, 0, 10)
+            ]);
+            const zAxisMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x4444ff,
+                linewidth: 2
+            });
+            const zAxis = new THREE.Line(zAxisGeometry, zAxisMaterial);
+            axesHelper.add(zAxis);
+            
+            // 添加箭头
+            const arrowLength = 0.5;
+            const arrowHeadLength = 0.2;
+            const arrowHeadWidth = 0.1;
+            
+            // X轴箭头
+            const xArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(9.5, 0, 0),
+                arrowLength,
+                0xff4444,
+                arrowHeadLength,
+                arrowHeadWidth
+            );
+            axesHelper.add(xArrow);
+            
+            // Y轴箭头
+            const yArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, 9.5, 0),
+                arrowLength,
+                0x44ff44,
+                arrowHeadLength,
+                arrowHeadWidth
+            );
+            axesHelper.add(yArrow);
+            
+            // Z轴箭头
+            const zArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(0, 0, 1),
+                new THREE.Vector3(0, 0, 9.5),
+                arrowLength,
+                0x4444ff,
+                arrowHeadLength,
+                arrowHeadWidth
+            );
+            axesHelper.add(zArrow);
+            
+            // 添加坐标轴标签
+            addAxisLabels();
+            
+            scene.add(axesHelper);
+        }
+        
+        // 添加坐标轴标签
+        function addAxisLabels() {
+            // X轴标签
+            const xLabelGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.01);
+            const xLabelMaterial = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+            const xLabel = new THREE.Mesh(xLabelGeometry, xLabelMaterial);
+            xLabel.position.set(10.5, 0, 0);
+            axesHelper.add(xLabel);
+            
+            // Y轴标签
+            const yLabelGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.01);
+            const yLabelMaterial = new THREE.MeshBasicMaterial({ color: 0x44ff44 });
+            const yLabel = new THREE.Mesh(yLabelGeometry, yLabelMaterial);
+            yLabel.position.set(0, 10.5, 0);
+            axesHelper.add(yLabel);
+            
+            // Z轴标签
+            const zLabelGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.01);
+            const zLabelMaterial = new THREE.MeshBasicMaterial({ color: 0x4444ff });
+            const zLabel = new THREE.Mesh(zLabelGeometry, zLabelMaterial);
+            zLabel.position.set(0, 0, 10.5);
+            axesHelper.add(zLabel);
+        }
+        
+        // 更新坐标轴可见性
+        function updateAxesVisibility() {
+            if (axesHelper) {
+                axesHelper.visible = showAxes;
+            }
+        }
+        
+        // 更新磁感线可见性
+        function updateFieldLinesVisibility() {
+            fieldLines.forEach(line => {
+                line.visible = showFieldLines;
+            });
+        }
+        
+        // 创建通电导线
+        function createWire() {
+            const wireGeometry = new THREE.CylinderGeometry(0.15, 0.15, 12, 16);
+            const wireMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xf72585,
+                shininess: 100,
+                emissive: 0x330022,
+                emissiveIntensity: 0.3
+            });
+            wire = new THREE.Mesh(wireGeometry, wireMaterial);
+            wire.position.y = 0;
+            scene.add(wire);
+            
+            // 在导线顶部添加圆锥形箭头
+            const arrowGeometry = new THREE.ConeGeometry(0.3, 1.2, 16);
+            const arrowMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xf72585,
+                shininess: 100,
+                emissive: 0x330022,
+                emissiveIntensity: 0.3
+            });
+            const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+            arrow.position.y = 6.6; // 导线顶部 + 箭头高度的一半
+            scene.add(arrow);
+        }
+        
+        // 创建电流符号（顶部箭头和底部叉号）
+        function createCurrentSymbols() {
+            // 清除现有的符号
+            currentSymbols.forEach(symbol => scene.remove(symbol));
+            currentSymbols = [];
+            
+            // 创建顶部箭头组 - 始终显示
+            const topArrowGroup = new THREE.Group();
+            
+            // 主箭头杆（从导线顶部向上延伸）
+            const mainArrowShaftGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.2, 8);
+            const mainArrowShaftMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xf72585,
+                transparent: true,
+                opacity: 0.9
+            });
+            const mainArrowShaft = new THREE.Mesh(mainArrowShaftGeometry, mainArrowShaftMaterial);
+            mainArrowShaft.position.y = 0.6;
+            topArrowGroup.add(mainArrowShaft);
+            
+            // 主箭头头部
+            const mainArrowHeadGeometry = new THREE.ConeGeometry(0.15, 0.4, 8);
+            const mainArrowHeadMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xf72585,
+                transparent: true,
+                opacity: 0.9
+            });
+            const mainArrowHead = new THREE.Mesh(mainArrowHeadGeometry, mainArrowHeadMaterial);
+            mainArrowHead.position.y = 1.2;
+            topArrowGroup.add(mainArrowHead);
+            
+            // 设置顶部箭头位置和方向
+            topArrowGroup.position.set(0, 5.4, 0);
+            topArrowGroup.rotation.x = Math.PI; // 使箭头朝上
+            topArrowGroup.userData = { type: 'topArrow' };
+            scene.add(topArrowGroup);
+            currentSymbols.push(topArrowGroup);
+            
+            // 创建底部叉号组
+            const bottomCrossGroup = new THREE.Group();
+            
+            // 创建叉的第一条线
+            const crossLine1Geometry = new THREE.BoxGeometry(0.8, 0.08, 0.08);
+            const crossMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xf72585,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.3,
+                transparent: true,
+                opacity: 0.9
+            });
+            const crossLine1 = new THREE.Mesh(crossLine1Geometry, crossMaterial);
+            crossLine1.rotation.z = Math.PI / 4;
+            bottomCrossGroup.add(crossLine1);
+            
+            // 创建叉的第二条线
+            const crossLine2Geometry = new THREE.BoxGeometry(0.8, 0.08, 0.08);
+            const crossLine2 = new THREE.Mesh(crossLine2Geometry, crossMaterial);
+            crossLine2.rotation.z = -Math.PI / 4;
+            bottomCrossGroup.add(crossLine2);
+            
+            // 设置底部叉号位置
+            bottomCrossGroup.position.set(0, -6, 0);
+            bottomCrossGroup.userData = { type: 'bottomCross' };
+            scene.add(bottomCrossGroup);
+            currentSymbols.push(bottomCrossGroup);
+            
+            // 添加叉号周围的发光效果
+            const crossGlowGeometry = new THREE.RingGeometry(0.35, 0.45, 16);
+            const crossGlowMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xf72585,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.3
+            });
+            const crossGlow = new THREE.Mesh(crossGlowGeometry, crossGlowMaterial);
+            crossGlow.position.set(0, -6, 0);
+            crossGlow.rotation.x = Math.PI / 2;
+            crossGlow.userData = { type: 'crossGlow' };
+            scene.add(crossGlow);
+            currentSymbols.push(crossGlow);
+            
+            // 初始更新符号可见性
+            updateCurrentSymbols();
+        }
+        
+        // 更新电流符号的可见性（基于视角）
+        function updateCurrentSymbols() {
+            // 获取相机相对于导线顶部的角度
+            const wireTop = new THREE.Vector3(0, 6, 0);
+            const cameraToWireTop = new THREE.Vector3().subVectors(wireTop, camera.position).normalize();
+            
+            // 计算相机方向与垂直向上方向的点积
+            const upVector = new THREE.Vector3(0, 1, 0);
+            const dotProduct = cameraToWireTop.dot(upVector);
+            
+            // 如果相机在导线顶部上方（俯视图），显示顶部箭头，隐藏底部叉
+            // 如果相机在导线顶部下方（仰视图），显示底部叉，隐藏顶部箭头
+            const isTopView = dotProduct > 0;
+            
+            currentSymbols.forEach(symbol => {
+                if (symbol.userData.type === 'topArrow') {
+                    // 顶部箭头：始终显示（不隐藏）
+                    symbol.visible = true;
+                    
+                    // 调整箭头符号的旋转使其始终面向相机
+                    const lookAtPos = new THREE.Vector3(camera.position.x, symbol.position.y, camera.position.z);
+                    symbol.lookAt(lookAtPos);
+                    symbol.rotation.x = Math.PI; // 保持箭头朝上
+                    
+                } else if (symbol.userData.type === 'bottomCross' || symbol.userData.type === 'crossGlow') {
+                    // 底部叉符号和发光效果：只在仰视图时显示
+                    symbol.visible = !isTopView;
+                    
+                    // 调整叉符号的旋转使其在xz平面内面向相机
+                    if (symbol.userData.type === 'bottomCross') {
+                        const lookAtPos = new THREE.Vector3(camera.position.x, symbol.position.y, camera.position.z);
+                        symbol.lookAt(lookAtPos);
+                        // 恢复45度旋转
+                        symbol.children.forEach(child => {
+                            if (child.rotation.z === Math.PI / 4) {
+                                child.rotation.z = Math.PI / 4;
+                            } else if (child.rotation.z === -Math.PI / 4) {
+                                child.rotation.z = -Math.PI / 4;
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        
+        // 创建七层垂直同心圆磁场线
+        function createVerticalFieldLines() {
+            // 清除现有的磁场线
+            fieldLines.forEach(line => scene.remove(line));
+            fieldLines = [];
+            
+            // 根据毕奥-萨伐尔定律 B ∝ 1/r
+            // 创建靠近导线密集，远处稀疏的同心圆
+            
+            // 定义半径分布（近密远疏）
+            const radii = [];
+            
+            // 靠近导线：非常密集（0.5-2.0m，每0.15m一个圆）
+            for (let r = 0.5; r <= 2.0; r += 0.15) {
+                radii.push(r);
+            }
+            
+            // 中间区域：中等密度（2.5-4.0m，每0.5m一个圆）
+            for (let r = 2.5; r <= 4.0; r += 0.5) {
+                radii.push(r);
+            }
+            
+            // 远处：稀疏（5.0-7.0m，每1.0m一个圆）
+            for (let r = 5.0; r <= 7.0; r += 1.0) {
+                radii.push(r);
+            }
+            
+            // 为每个垂直平面创建完全相同的同心圆
+            VERTICAL_PLANE_HEIGHTS.forEach(height => {
+                radii.forEach(radius => {
+                    // 创建磁场线材质 - 统一使用蓝色
+                    const lineMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0x4cc9f0,
+                        transparent: true,
+                        opacity: 0.7,
+                        linewidth: 1
+                    });
+                    
+                    // 创建圆形磁场线
+                    const points = [];
+                    const segments = 64;
+                    
+                    for (let i = 0; i <= segments; i++) {
+                        const angle = (i / segments) * Math.PI * 2;
+                        const x = radius * Math.cos(angle);
+                        const z = radius * Math.sin(angle);
+                        const y = height;
+                        
+                        points.push(new THREE.Vector3(x, y, z));
+                    }
+                    
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const fieldLine = new THREE.Line(lineGeometry, lineMaterial);
+                    scene.add(fieldLine);
+                    fieldLines.push(fieldLine);
+                });
+            });
+            
+            // 更新磁感线可见性
+            updateFieldLinesVisibility();
+        }
+        
+        // 创建磁场方向箭头（根据右手螺旋定则，逆时针方向）
+        function createDirectionArrows() {
+            // 清除现有的箭头
+            directionArrows.forEach(arrow => scene.remove(arrow));
+            directionArrows = [];
+            
+            // 在每个垂直平面上添加方向箭头
+            VERTICAL_PLANE_HEIGHTS.forEach(height => {
+                // 定义不同半径位置添加箭头
+                const arrowPositions = [
+                    // 靠近导线处（密集区域，多放箭头）
+                    {radius: 0.8, angle: 0},     // 右侧
+                    {radius: 0.8, angle: Math.PI/2},     // 前方
+                    {radius: 0.8, angle: Math.PI},       // 左侧
+                    {radius: 0.8, angle: 3*Math.PI/2},   // 后方
+                    
+                    // 中间区域
+                    {radius: 2.0, angle: 0},
+                    {radius: 2.0, angle: Math.PI/2},
+                    {radius: 2.0, angle: Math.PI},
+                    {radius: 2.0, angle: 3*Math.PI/2},
+                    
+                    {radius: 3.0, angle: Math.PI/4},
+                    {radius: 3.0, angle: 3*Math.PI/4},
+                    {radius: 3.0, angle: 5*Math.PI/4},
+                    {radius: 3.0, angle: 7*Math.PI/4},
+                    
+                    // 远处区域
+                    {radius: 5.0, angle: 0},
+                    {radius: 5.0, angle: Math.PI/2},
+                    {radius: 5.0, angle: Math.PI},
+                    {radius: 5.0, angle: 3*Math.PI/2},
+                    
+                    {radius: 6.0, angle: Math.PI/4},
+                    {radius: 6.0, angle: 3*Math.PI/4},
+                    {radius: 6.0, angle: 5*Math.PI/4},
+                    {radius: 6.0, angle: 7*Math.PI/4}
+                ];
+                
+                arrowPositions.forEach(pos => {
+                    // 计算箭头位置
+                    const x = pos.radius * Math.cos(pos.angle);
+                    const z = pos.radius * Math.sin(pos.angle);
+                    const y = height;
+                    
+                    // 根据右手螺旋定则计算磁场方向
+                    // 电流垂直纸面向外（↑），磁场方向为逆时针（从上方看）
+                    const position = new THREE.Vector3(x, y, z);
+                    
+                    // 计算径向向量（从导线指向该点）
+                    const radialVector = new THREE.Vector3(x, 0, z);
+                    
+                    // 计算磁场方向（逆时针方向）
+                    // 对于电流垂直向外，磁场方向 = 径向向量 × 电流方向（向上）
+                    const currentDirection = new THREE.Vector3(0, 1, 0);
+                    const magneticDirection = new THREE.Vector3()
+                        .crossVectors(currentDirection, radialVector)
+                        .normalize();
+                    
+                    // 调整箭头大小 - 增大为原来的两倍
+                    const arrowSize = (0.3 + 0.1 * (pos.radius / 2)) * 2; // 乘以2
+                    
+                    // 创建方向箭头
+                    const arrowHelper = new THREE.ArrowHelper(
+                        magneticDirection,
+                        position,
+                        arrowSize,
+                        0xff9e00,  // 橙色
+                        0.3,       // 头部长度比例（增大）
+                        0.15       // 头部宽度比例（增大）
+                    );
+                    
+                    scene.add(arrowHelper);
+                    directionArrows.push(arrowHelper);
+                });
+            });
+            
+            // 更新箭头可见性
+            updateDirectionArrowsVisibility();
+        }
+        
+        // 创建橙色垂直参考环（线圈1，在电流右侧）
+        function createOrangeRing() {
+            // 清除现有的橙色环
+            if (orangeRing) {
+                scene.remove(orangeRing);
+                orangeRing = null;
+            }
+            
+            // 创建橙色参考环组
+            const ringGroup = new THREE.Group();
+            ringGroup.userData = { type: 'orangeRing' };
+            
+            // 环的半径
+            const ringRadius = 2.0;
+            
+            // 创建加粗的环 - 使用管状几何体
+            const tubeRadius = 0.15;
+            const radialSegments = 32;
+            const tubularSegments = 64;
+            
+            // 创建圆环路径
+            const curve = new THREE.EllipseCurve(
+                0, 0,
+                ringRadius, ringRadius,
+                0, 2 * Math.PI,
+                false,
+                0
+            );
+            
+            const points = curve.getPoints(tubularSegments);
+            const path = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)));
+            
+            // 创建加粗的环几何体
+            const tubeGeometry = new THREE.TubeGeometry(
+                path,
+                tubularSegments,
+                tubeRadius,
+                radialSegments,
+                false
+            );
+            
+            const tubeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff9e00, // 橙色
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const thickRing = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            thickRing.userData = { type: 'orangeRingMesh' };
+            
+            // 以直径为轴旋转90度（绕X轴）
+            thickRing.rotation.x = Math.PI / 2;
+            ringGroup.add(thickRing);
+            
+            // 添加环的边缘线框
+            const tubeEdges = new THREE.EdgesGeometry(tubeGeometry);
+            const edgeMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xff9e00,
+                linewidth: 3,
+                transparent: true,
+                opacity: 1.0
+            });
+            const ringEdges = new THREE.LineSegments(tubeEdges, edgeMaterial);
+            ringEdges.rotation.x = Math.PI / 2;
+            ringEdges.userData = { type: 'orangeRingEdges' };
+            ringGroup.add(ringEdges);
+            
+            // 设置环的初始位置
+            ringGroup.position.set(
+                ORANGE_RING_INITIAL_POSITION.x,
+                ORANGE_RING_INITIAL_POSITION.y,
+                ORANGE_RING_INITIAL_POSITION.z
+            );
+            orangeRing = ringGroup;
+            
+            scene.add(orangeRing);
+            
+            // 更新橙色环可见性
+            updateOrangeRingVisibility();
+        }
+        
+        // 创建蓝色垂直参考环（线圈2，在电流左侧，与橙色环垂直）
+        function createBlueRing() {
+            // 清除现有的蓝色环
+            if (blueRing) {
+                scene.remove(blueRing);
+                blueRing = null;
+            }
+            
+            // 创建蓝色参考环组
+            const ringGroup = new THREE.Group();
+            ringGroup.userData = { type: 'blueRing' };
+            
+            // 环的半径
+            const ringRadius = 2.0;
+            
+            // 创建加粗的环 - 使用管状几何体
+            const tubeRadius = 0.15;
+            const radialSegments = 32;
+            const tubularSegments = 64;
+            
+            // 创建圆环路径
+            const curve = new THREE.EllipseCurve(
+                0, 0,
+                ringRadius, ringRadius,
+                0, 2 * Math.PI,
+                false,
+                0
+            );
+            
+            const points = curve.getPoints(tubularSegments);
+            const path = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)));
+            
+            // 创建加粗的环几何体
+            const tubeGeometry = new THREE.TubeGeometry(
+                path,
+                tubularSegments,
+                tubeRadius,
+                radialSegments,
+                false
+            );
+            
+            // 使用更明显的蓝色
+            const tubeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00aaff, // 更明显的蓝色
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const thickRing = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            thickRing.userData = { type: 'blueRingMesh' };
+            
+            // 蓝色环与橙色环垂直：橙色环绕X轴旋转90度，蓝色环绕Y轴旋转90度
+            // 这样两个环的平面互相垂直
+            thickRing.rotation.y = Math.PI / 2;
+            ringGroup.add(thickRing);
+            
+            // 添加环的边缘线框
+            const tubeEdges = new THREE.EdgesGeometry(tubeGeometry);
+            const edgeMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x00aaff, // 与环体颜色一致
+                linewidth: 3,
+                transparent: true,
+                opacity: 1.0
+            });
+            const ringEdges = new THREE.LineSegments(tubeEdges, edgeMaterial);
+            ringEdges.rotation.y = Math.PI / 2;
+            ringEdges.userData = { type: 'blueRingEdges' };
+            ringGroup.add(ringEdges);
+            
+            // 设置环的初始位置
+            ringGroup.position.set(
+                BLUE_RING_INITIAL_POSITION.x,
+                BLUE_RING_INITIAL_POSITION.y,
+                BLUE_RING_INITIAL_POSITION.z
+            );
+            blueRing = ringGroup;
+            
+            scene.add(blueRing);
+            
+            // 更新蓝色环可见性
+            updateBlueRingVisibility();
+        }
+        
+        // 创建紫色垂直参考环（线圈3，在前两个线圈之间，以竖直直径为轴旋转90度）
+        function createPurpleRing() {
+            // 清除现有的紫色环
+            if (purpleRing) {
+                scene.remove(purpleRing);
+                purpleRing = null;
+            }
+            
+            // 创建紫色参考环组
+            const ringGroup = new THREE.Group();
+            ringGroup.userData = { type: 'purpleRing' };
+            
+            // 环的半径 - 稍微小一点以区分
+            const ringRadius = 1.8;
+            
+            // 创建加粗的环 - 使用管状几何体
+            const tubeRadius = 0.15;
+            const radialSegments = 32;
+            const tubularSegments = 64;
+            
+            // 创建圆环路径
+            const curve = new THREE.EllipseCurve(
+                0, 0,
+                ringRadius, ringRadius,
+                0, 2 * Math.PI,
+                false,
+                0
+            );
+            
+            const points = curve.getPoints(tubularSegments);
+            const path = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)));
+            
+            // 创建加粗的环几何体
+            const tubeGeometry = new THREE.TubeGeometry(
+                path,
+                tubularSegments,
+                tubeRadius,
+                radialSegments,
+                false
+            );
+            
+            // 使用紫色
+            const tubeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x9d4edd, // 紫色
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const thickRing = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            thickRing.userData = { type: 'purpleRingMesh' };
+            
+            // 保持原来的旋转不变：
+            // 首先绕Y轴旋转90度，使其在XZ平面内
+            // 然后以竖直直径为轴（Y轴）旋转90度
+            thickRing.rotation.y = Math.PI / 2; // 首先绕Y轴旋转90度，使其在XZ平面内
+            thickRing.rotation.z = Math.PI / 2; // 以竖直直径为轴旋转90度
+            
+            ringGroup.add(thickRing);
+            
+            // 添加环的边缘线框
+            const tubeEdges = new THREE.EdgesGeometry(tubeGeometry);
+            const edgeMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x9d4edd, // 紫色
+                linewidth: 3,
+                transparent: true,
+                opacity: 1.0
+            });
+            const ringEdges = new THREE.LineSegments(tubeEdges, edgeMaterial);
+            ringEdges.rotation.y = Math.PI / 2;
+            ringEdges.rotation.z = Math.PI / 2;
+            ringEdges.userData = { type: 'purpleRingEdges' };
+            ringGroup.add(ringEdges);
+            
+            // 设置环的初始位置
+            ringGroup.position.set(
+                PURPLE_RING_INITIAL_POSITION.x,
+                PURPLE_RING_INITIAL_POSITION.y,
+                PURPLE_RING_INITIAL_POSITION.z
+            );
+            purpleRing = ringGroup;
+            
+            scene.add(purpleRing);
+            
+            // 更新紫色环可见性
+            updatePurpleRingVisibility();
+        }
+        
+        // 更新橙色环位置
+        function updateOrangeRingPosition(x, y, z) {
+            if (orangeRing) {
+                orangeRing.position.set(x, y, z);
+            }
+        }
+        
+        // 更新蓝色环位置
+        function updateBlueRingPosition(x, y, z) {
+            if (blueRing) {
+                blueRing.position.set(x, y, z);
+            }
+        }
+        
+        // 更新紫色环位置
+        function updatePurpleRingPosition(x, y, z) {
+            if (purpleRing) {
+                purpleRing.position.set(x, y, z);
+            }
+        }
+        
+        // 更新蓝色环的可见性和外观（基于视角）
+        function updateBlueRingAppearance() {
+            if (!blueRing) return;
+            
+            // 获取相机方向
+            const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+            
+            // 计算相机与Y轴的夹角
+            const upVector = new THREE.Vector3(0, 1, 0);
+            const angleToUp = Math.acos(Math.abs(cameraDirection.dot(upVector)));
+            
+            // 如果是俯视图（相机近似垂直向下），蓝色环应该显示为短线
+            const isTopView = angleToUp < Math.PI / 6; // 小于30度角
+            
+            // 遍历蓝色环的子元素
+            blueRing.children.forEach(child => {
+                if (child.userData.type === 'blueRingMesh') {
+                    // 环体在俯视图时减小半径，使其看起来像短线
+                    if (isTopView) {
+                        child.scale.set(1, 0.05, 1); // 压扁环体
+                    } else {
+                        child.scale.set(1, 1, 1); // 恢复正常
+                    }
+                } else if (child.userData.type === 'blueRingEdges') {
+                    // 线框在俯视图时隐藏
+                    child.visible = !isTopView;
+                }
+            });
+        }
+        
+        // 更新紫色环的可见性和外观（基于视角）
+        function updatePurpleRingAppearance() {
+            if (!purpleRing) return;
+            
+            // 获取相机方向
+            const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+            
+            // 计算相机与Y轴的夹角
+            const upVector = new THREE.Vector3(0, 1, 0);
+            const angleToUp = Math.acos(Math.abs(cameraDirection.dot(upVector)));
+            
+            // 如果是俯视图（相机近似垂直向下），紫色环应该显示为短线
+            const isTopView = angleToUp < Math.PI / 6; // 小于30度角
+            
+            // 遍历紫色环的子元素
+            purpleRing.children.forEach(child => {
+                if (child.userData.type === 'purpleRingMesh') {
+                    // 环体在俯视图时减小半径，使其看起来像短线
+                    if (isTopView) {
+                        child.scale.set(1, 0.05, 1); // 压扁环体
+                    } else {
+                        child.scale.set(1, 1, 1); // 恢复正常
+                    }
+                } else if (child.userData.type === 'purpleRingEdges') {
+                    // 线框在俯视图时隐藏
+                    child.visible = !isTopView;
+                }
+            });
+        }
+        
+        // 更新方向箭头的可见性
+        function updateDirectionArrowsVisibility() {
+            directionArrows.forEach(arrow => {
+                arrow.visible = showDirectionArrows;
+            });
+        }
+        
+        // 更新橙色环的可见性
+        function updateOrangeRingVisibility() {
+            if (orangeRing) {
+                orangeRing.visible = showOrangeRing;
+            }
+        }
+        
+        // 更新蓝色环的可见性
+        function updateBlueRingVisibility() {
+            if (blueRing) {
+                blueRing.visible = showBlueRing;
+            }
+        }
+        
+        // 更新紫色环的可见性
+        function updatePurpleRingVisibility() {
+            if (purpleRing) {
+                purpleRing.visible = showPurpleRing;
+            }
+        }
+        
+        // 恢复初始视图
+        function resetView() {
+            camera.position.copy(INITIAL_CAMERA_POSITION);
+            camera.lookAt(0, 0, 0);
+            controls.reset();
+        }
+        
+        // 恢复线圈初始位置
+        function resetRingPositions() {
+            // 重置橙色线圈位置
+            updateOrangeRingPosition(
+                ORANGE_RING_INITIAL_POSITION.x,
+                ORANGE_RING_INITIAL_POSITION.y,
+                ORANGE_RING_INITIAL_POSITION.z
+            );
+            
+            // 重置蓝色线圈位置
+            updateBlueRingPosition(
+                BLUE_RING_INITIAL_POSITION.x,
+                BLUE_RING_INITIAL_POSITION.y,
+                BLUE_RING_INITIAL_POSITION.z
+            );
+            
+            // 重置紫色线圈位置
+            updatePurpleRingPosition(
+                PURPLE_RING_INITIAL_POSITION.x,
+                PURPLE_RING_INITIAL_POSITION.y,
+                PURPLE_RING_INITIAL_POSITION.z
+            );
+            
+            // 更新滑块和显示值
+            document.getElementById('orange-x-slider').value = ORANGE_RING_INITIAL_POSITION.x;
+            document.getElementById('orange-y-slider').value = ORANGE_RING_INITIAL_POSITION.y;
+            document.getElementById('orange-z-slider').value = ORANGE_RING_INITIAL_POSITION.z;
+            document.getElementById('orange-x-value').textContent = ORANGE_RING_INITIAL_POSITION.x.toFixed(1);
+            document.getElementById('orange-y-value').textContent = ORANGE_RING_INITIAL_POSITION.y.toFixed(1);
+            document.getElementById('orange-z-value').textContent = ORANGE_RING_INITIAL_POSITION.z.toFixed(1);
+            
+            document.getElementById('blue-x-slider').value = BLUE_RING_INITIAL_POSITION.x;
+            document.getElementById('blue-y-slider').value = BLUE_RING_INITIAL_POSITION.y;
+            document.getElementById('blue-z-slider').value = BLUE_RING_INITIAL_POSITION.z;
+            document.getElementById('blue-x-value').textContent = BLUE_RING_INITIAL_POSITION.x.toFixed(1);
+            document.getElementById('blue-y-value').textContent = BLUE_RING_INITIAL_POSITION.y.toFixed(1);
+            document.getElementById('blue-z-value').textContent = BLUE_RING_INITIAL_POSITION.z.toFixed(1);
+            
+            document.getElementById('purple-x-slider').value = PURPLE_RING_INITIAL_POSITION.x;
+            document.getElementById('purple-y-slider').value = PURPLE_RING_INITIAL_POSITION.y;
+            document.getElementById('purple-z-slider').value = PURPLE_RING_INITIAL_POSITION.z;
+            document.getElementById('purple-x-value').textContent = PURPLE_RING_INITIAL_POSITION.x.toFixed(1);
+            document.getElementById('purple-y-value').textContent = PURPLE_RING_INITIAL_POSITION.y.toFixed(1);
+            document.getElementById('purple-z-value').textContent = PURPLE_RING_INITIAL_POSITION.z.toFixed(1);
+        }
+        
+        // 创建加粗的底部网格
+        function createGrid() {
+            // 创建加粗的网格 - 将线宽参数从1.0增加到2.0
+            const gridHelper = new THREE.GridHelper(20, 20, 0x333355, 0x222244);
+            gridHelper.position.y = -6;
+            
+            // 设置网格线的宽度
+            if (gridHelper.material.linewidth) {
+                gridHelper.material.linewidth = 2.0; // 线宽增加为原来的两倍
+            }
+            
+            // 创建更粗的中心线
+            const centerLineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-10, -6, 0),
+                new THREE.Vector3(10, -6, 0)
+            ]);
+            const centerLineMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x5555aa,
+                linewidth: 3.0 // 中心线更粗
+            });
+            const centerLineX = new THREE.Line(centerLineGeometry, centerLineMaterial);
+            scene.add(centerLineX);
+            
+            const centerLineGeometryZ = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, -6, -10),
+                new THREE.Vector3(0, -6, 10)
+            ]);
+            const centerLineZ = new THREE.Line(centerLineGeometryZ, centerLineMaterial);
+            scene.add(centerLineZ);
+            
+            scene.add(gridHelper);
+        }
+        
+        // 设置UI事件监听
+        function setupEventListeners() {
+            // 获取DOM元素
+            const showDirectionArrowsCheckbox = document.getElementById('show-direction-arrows');
+            const showOrangeRingCheckbox = document.getElementById('show-orange-ring');
+            const showBlueRingCheckbox = document.getElementById('show-blue-ring');
+            const showPurpleRingCheckbox = document.getElementById('show-purple-ring');
+            const showAxesCheckbox = document.getElementById('show-axes');
+            const showFieldLinesCheckbox = document.getElementById('show-field-lines');
+            
+            // 滑块元素
+            const orangeXSlider = document.getElementById('orange-x-slider');
+            const orangeYSlider = document.getElementById('orange-y-slider');
+            const orangeZSlider = document.getElementById('orange-z-slider');
+            const blueXSlider = document.getElementById('blue-x-slider');
+            const blueYSlider = document.getElementById('blue-y-slider');
+            const blueZSlider = document.getElementById('blue-z-slider');
+            const purpleXSlider = document.getElementById('purple-x-slider');
+            const purpleYSlider = document.getElementById('purple-y-slider');
+            const purpleZSlider = document.getElementById('purple-z-slider');
+            
+            // 显示值的元素
+            const orangeXValue = document.getElementById('orange-x-value');
+            const orangeYValue = document.getElementById('orange-y-value');
+            const orangeZValue = document.getElementById('orange-z-value');
+            const blueXValue = document.getElementById('blue-x-value');
+            const blueYValue = document.getElementById('blue-y-value');
+            const blueZValue = document.getElementById('blue-z-value');
+            const purpleXValue = document.getElementById('purple-x-value');
+            const purpleYValue = document.getElementById('purple-y-value');
+            const purpleZValue = document.getElementById('purple-z-value');
+            
+            // 滑块容器
+            const orangeRingControls = document.getElementById('orange-ring-controls');
+            const blueRingControls = document.getElementById('blue-ring-controls');
+            const purpleRingControls = document.getElementById('purple-ring-controls');
+            
+            // 初始化复选框状态
+            showDirectionArrowsCheckbox.checked = false;
+            showOrangeRingCheckbox.checked = false;
+            showBlueRingCheckbox.checked = false;
+            showPurpleRingCheckbox.checked = false;
+            showAxesCheckbox.checked = true;
+            showFieldLinesCheckbox.checked = true;
+            
+            // 初始更新滑块容器显示状态
+            updateSliderContainersVisibility();
+            
+            // 方向箭头显示控制
+            showDirectionArrowsCheckbox.addEventListener('change', function() {
+                showDirectionArrows = this.checked;
+                updateDirectionArrowsVisibility();
+            });
+            
+            // 橙色环显示控制
+            showOrangeRingCheckbox.addEventListener('change', function() {
+                showOrangeRing = this.checked;
+                updateOrangeRingVisibility();
+                updateSliderContainersVisibility();
+            });
+            
+            // 蓝色环显示控制
+            showBlueRingCheckbox.addEventListener('change', function() {
+                showBlueRing = this.checked;
+                updateBlueRingVisibility();
+                updateSliderContainersVisibility();
+            });
+            
+            // 紫色环显示控制
+            showPurpleRingCheckbox.addEventListener('change', function() {
+                showPurpleRing = this.checked;
+                updatePurpleRingVisibility();
+                updateSliderContainersVisibility();
+            });
+            
+            // 坐标轴显示控制
+            showAxesCheckbox.addEventListener('change', function() {
+                showAxes = this.checked;
+                updateAxesVisibility();
+            });
+            
+            // 磁感线显示控制
+            showFieldLinesCheckbox.addEventListener('change', function() {
+                showFieldLines = this.checked;
+                updateFieldLinesVisibility();
+            });
+            
+            // 橙色线圈滑块控制
+            orangeXSlider.addEventListener('input', function() {
+                const x = parseFloat(this.value);
+                orangeXValue.textContent = x.toFixed(1);
+                updateOrangeRingPosition(x, parseFloat(orangeYSlider.value), parseFloat(orangeZSlider.value));
+            });
+            
+            orangeYSlider.addEventListener('input', function() {
+                const y = parseFloat(this.value);
+                orangeYValue.textContent = y.toFixed(1);
+                updateOrangeRingPosition(parseFloat(orangeXSlider.value), y, parseFloat(orangeZSlider.value));
+            });
+            
+            orangeZSlider.addEventListener('input', function() {
+                const z = parseFloat(this.value);
+                orangeZValue.textContent = z.toFixed(1);
+                updateOrangeRingPosition(parseFloat(orangeXSlider.value), parseFloat(orangeYSlider.value), z);
+            });
+            
+            // 蓝色线圈滑块控制
+            blueXSlider.addEventListener('input', function() {
+                const x = parseFloat(this.value);
+                blueXValue.textContent = x.toFixed(1);
+                updateBlueRingPosition(x, parseFloat(blueYSlider.value), parseFloat(blueZSlider.value));
+            });
+            
+            blueYSlider.addEventListener('input', function() {
+                const y = parseFloat(this.value);
+                blueYValue.textContent = y.toFixed(1);
+                updateBlueRingPosition(parseFloat(blueXSlider.value), y, parseFloat(blueZSlider.value));
+            });
+            
+            blueZSlider.addEventListener('input', function() {
+                const z = parseFloat(this.value);
+                blueZValue.textContent = z.toFixed(1);
+                updateBlueRingPosition(parseFloat(blueXSlider.value), parseFloat(blueYSlider.value), z);
+            });
+            
+            // 紫色线圈滑块控制
+            purpleXSlider.addEventListener('input', function() {
+                const x = parseFloat(this.value);
+                purpleXValue.textContent = x.toFixed(1);
+                updatePurpleRingPosition(x, parseFloat(purpleYSlider.value), parseFloat(purpleZSlider.value));
+            });
+            
+            purpleYSlider.addEventListener('input', function() {
+                const y = parseFloat(this.value);
+                purpleYValue.textContent = y.toFixed(1);
+                updatePurpleRingPosition(parseFloat(purpleXSlider.value), y, parseFloat(purpleZSlider.value));
+            });
+            
+            purpleZSlider.addEventListener('input', function() {
+                const z = parseFloat(this.value);
+                purpleZValue.textContent = z.toFixed(1);
+                updatePurpleRingPosition(parseFloat(purpleXSlider.value), parseFloat(purpleYSlider.value), z);
+            });
+            
+            // 添加恢复按钮
+            const resetButton = document.createElement('button');
+            resetButton.textContent = '恢复初始视图和位置';
+            resetButton.id = 'reset-all';
+            resetButton.addEventListener('click', function() {
+                resetView();
+                resetRingPositions();
+            });
+            
+            // 将按钮添加到第一个控制组
+            const firstControlGroup = document.querySelector('.control-group');
+            const buttonGroup = document.createElement('div');
+            buttonGroup.className = 'button-group';
+            buttonGroup.appendChild(resetButton);
+            firstControlGroup.appendChild(buttonGroup);
+        }
+        
+        // 更新滑块容器可见性（只有在线圈显示时才显示对应的滑块）
+        function updateSliderContainersVisibility() {
+            const orangeRingControls = document.getElementById('orange-ring-controls');
+            const blueRingControls = document.getElementById('blue-ring-controls');
+            const purpleRingControls = document.getElementById('purple-ring-controls');
+            
+            if (orangeRingControls) {
+                orangeRingControls.style.display = showOrangeRing ? 'block' : 'none';
+            }
+            
+            if (blueRingControls) {
+                blueRingControls.style.display = showBlueRing ? 'block' : 'none';
+            }
+            
+            if (purpleRingControls) {
+                purpleRingControls.style.display = showPurpleRing ? 'block' : 'none';
+            }
+        }
+        
+        // 窗口大小调整处理
+        function onWindowResize() {
+            const container = document.getElementById('scene-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // 缓慢旋转磁场线（增强可视化效果）
+            fieldLines.forEach((line, index) => {
+                if (index % 8 === 0) { // 只旋转部分线
+                    const x = line.geometry.attributes.position.getX(0);
+                    const z = line.geometry.attributes.position.getZ(0);
+                    const distance = Math.sqrt(x*x + z*z);
+                    
+                    // 靠近导线的线旋转更快
+                    line.rotation.y += 0.001 * (2/distance);
+                }
+            });
+            
+            // 更新电流符号的可见性（基于相机角度）
+            updateCurrentSymbols();
+            
+            // 更新蓝色环的外观（基于相机角度）
+            if (blueRing && blueRing.visible) {
+                updateBlueRingAppearance();
+            }
+            
+            // 更新紫色环的外观（基于相机角度）
+            if (purpleRing && purpleRing.visible) {
+                updatePurpleRingAppearance();
+            }
+            
+            // 使底部叉号有轻微的脉动效果，更加明显
+            currentSymbols.forEach(symbol => {
+                if (symbol.userData.type === 'crossGlow' && symbol.visible) {
+                    const time = Date.now() * 0.001;
+                    const pulse = 0.1 * Math.sin(time * 2);
+                    symbol.scale.set(1 + pulse, 1 + pulse, 1);
+                    symbol.material.opacity = 0.3 + 0.1 * Math.sin(time);
+                }
+            });
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
