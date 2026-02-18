@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Physic_Lab</title>
     <style>
-        /* 你的原有样式，完全不变 */
+        /* 你的原有样式 */
         * {
             margin: 0;
             padding: 0;
@@ -29,9 +29,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
             padding-bottom: 20px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
+            flex-wrap: wrap;
+            gap: 20px;
         }
 
         .header h1 {
@@ -42,6 +44,30 @@
             -webkit-text-fill-color: transparent;
         }
 
+        /* 搜索框样式 */
+        .search-wrapper {
+            position: relative;
+            flex-grow: 1;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 12px;
+            color: #fff;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #00c8ff;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.2);
+        }
+
         .stats {
             background: rgba(20,30,40,0.6);
             backdrop-filter: blur(8px);
@@ -49,10 +75,36 @@
             border-radius: 40px;
             border: 1px solid rgba(255,255,255,0.1);
             color: #ccddee;
+            white-space: nowrap;
+        }
+
+        /* 快速导航样式 */
+        .quick-nav {
+            margin-bottom: 40px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tag {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #aae0ff;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .nav-tag:hover {
+            background: rgba(0, 200, 255, 0.1);
+            border-color: rgba(0, 200, 255, 0.3);
         }
 
         .section {
             margin-bottom: 50px;
+            scroll-margin-top: 40px; /* 锚点跳转留白 */
         }
 
         .section-title {
@@ -101,6 +153,26 @@
             flex-direction: column;
             justify-content: flex-end;
             border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* 预留模型样式：变灰、模糊 */
+        .card.coming-soon {
+            filter: grayscale(0.9) brightness(0.7);
+            cursor: default;
+        }
+
+        .coming-soon-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 159, 67, 0.9);
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            z-index: 4;
+            letter-spacing: 1px;
         }
 
         .card-bg {
@@ -170,7 +242,7 @@
             text-transform: uppercase;
         }
 
-        .card:hover {
+        .card:not(.coming-soon):hover {
             transform: translateY(-8px);
             box-shadow: 0 30px 40px -12px rgba(0,150,255,0.3);
             border-color: rgba(100,200,255,0.3);
@@ -206,8 +278,13 @@
     <div class="container">
         <div class="header">
             <h1>物理仿真实验室</h1>
+            <div class="search-wrapper">
+                <input type="text" class="search-input" id="search-bar" placeholder="搜索实验名称、描述或标签...">
+            </div>
             <div class="stats" id="total-count">加载中...</div>
         </div>
+
+        <div class="quick-nav" id="quick-nav"></div>
 
         <div id="sections-container"></div>
 
@@ -215,11 +292,11 @@
     </div>
 
     <script>
-        // ---------- 模型库配置（已添加 models/ 前缀）----------
+        // ---------- 模型库配置 ----------
         const models = [
             // 必修一
             {
-                file: "models/匀变速直线运动.html",   // ✅ 修改点
+                file: "models/匀变速直线运动.html",
                 title: "匀变速直线运动",
                 desc: "速度 / 位移 / 时间关系",
                 bgImage: "./images/motion.jpg",
@@ -232,7 +309,8 @@
                 desc: "重力加速度模拟",
                 bgImage: "",
                 tag: "运动学",
-                category: "必修一"
+                category: "必修一",
+                status: "coming-soon" // ✨ 预留示例
             },
             // 必修二
             {
@@ -249,7 +327,8 @@
                 desc: "向心力 / 角速度",
                 bgImage: "",
                 tag: "曲线运动",
-                category: "必修二"
+                category: "必修二",
+                status: "coming-soon"
             },
             // 必修三
             {
@@ -286,7 +365,7 @@
                 tag: "洛伦兹力/同位素分离",
                 category: "选择性必修二"
             },
- {
+            {
                 file: "models/回旋加速器.html",
                 title: "回旋加速器",
                 desc: "带电粒子在磁场中偏转的应用",
@@ -294,7 +373,7 @@
                 tag: "洛伦兹力/高能物理",
                 category: "选择性必修二"
             },
- {
+            {
                 file: "models/电磁流量计.html",
                 title: "电磁流量计",
                 desc: "洛伦兹力与现代科技",
@@ -313,25 +392,15 @@
             }
         ];
 
-        // ---------- 定义教材分类顺序 ----------
-        const categories = [
-            "必修一",
-            "必修二", 
-            "必修三",
-            "选择性必修一",
-            "选择性必修二",
-            "选择性必修三"
-        ];
+        const categories = ["必修一", "必修二", "必修三", "选择性必修一", "选择性必修二", "选择性必修三"];
 
-        // ---------- 按分类分组 ----------
-        function groupByCategory(models) {
+        function groupByCategory(filteredModels) {
             const groups = {};
             categories.forEach(cat => { groups[cat] = []; });
-            models.forEach(model => {
+            filteredModels.forEach(model => {
                 const cat = model.category;
-                if (groups[cat]) {
-                    groups[cat].push(model);
-                } else {
+                if (groups[cat]) groups[cat].push(model);
+                else {
                     if (!groups["其他"]) groups["其他"] = [];
                     groups["其他"].push(model);
                 }
@@ -339,8 +408,10 @@
             return groups;
         }
 
-        // ---------- 渲染单个卡片 ----------
         function renderCard(model) {
+            const isComing = model.status === 'coming-soon';
+            const clickAction = isComing ? "" : `onclick="window.open('${model.file}', '_blank')"`;
+            
             let bgStyle = '';
             if (model.bgImage) {
                 bgStyle = `background-image: url('${model.bgImage}');`;
@@ -349,15 +420,14 @@
                     'linear-gradient(145deg, #0f2027, #203a43, #2c5364)',
                     'linear-gradient(145deg, #1d2671, #5c2580)',
                     'linear-gradient(145deg, #134e5e, #71b280)',
-                    'linear-gradient(145deg, #373b44, #4286f4)',
-                    'linear-gradient(145deg, #283048, #859398)'
+                    'linear-gradient(145deg, #373b44, #4286f4)'
                 ];
-                const randomGrad = gradients[Math.floor(Math.random() * gradients.length)];
-                bgStyle = `background-image: ${randomGrad};`;
+                bgStyle = `background-image: ${gradients[Math.floor(Math.random() * gradients.length)]};`;
             }
 
             return `
-                <div class="card" onclick="window.open('${model.file}', '_blank')">
+                <div class="card ${isComing ? 'coming-soon' : ''}" ${clickAction}>
+                    ${isComing ? '<div class="coming-soon-badge">即将上线</div>' : ''}
                     <div class="card-bg" style="${bgStyle}"></div>
                     <div class="card-overlay"></div>
                     <div class="card-content">
@@ -369,56 +439,51 @@
             `;
         }
 
-        // ---------- 渲染全部分区 ----------
-        function renderAllSections() {
+        function renderAllSections(filterText = '') {
             const container = document.getElementById('sections-container');
-            const groups = groupByCategory(models);
+            const navContainer = document.getElementById('quick-nav');
             
-            let totalModelCount = 0;
-            let html = '';
+            // 过滤逻辑
+            const filtered = models.filter(m => 
+                m.title.toLowerCase().includes(filterText.toLowerCase()) || 
+                m.desc.toLowerCase().includes(filterText.toLowerCase()) ||
+                m.tag.toLowerCase().includes(filterText.toLowerCase())
+            );
 
-            categories.forEach(cat => {
+            const groups = groupByCategory(filtered);
+            let totalModelCount = filtered.length;
+            let html = '';
+            let navHtml = '';
+
+            categories.forEach((cat, index) => {
                 const catModels = groups[cat] || [];
                 if (catModels.length === 0) return;
 
-                totalModelCount += catModels.length;
+                const sectionId = `section-${index}`;
+                navHtml += `<a href="#${sectionId}" class="nav-tag">${cat}</a>`;
 
-                let cardsHtml = '';
-                catModels.forEach(model => {
-                    cardsHtml += renderCard(model);
-                });
+                let cardsHtml = catModels.map(renderCard).join('');
 
                 html += `
-                    <div class="section">
+                    <div class="section" id="${sectionId}">
                         <div class="section-title">
                             <span class="section-name">${cat}</span>
                             <span class="section-count">${catModels.length} 个实验</span>
                         </div>
-                        <div class="grid">
-                            ${cardsHtml}
-                        </div>
+                        <div class="grid">${cardsHtml}</div>
                     </div>
                 `;
             });
 
-            if (groups["其他"] && groups["其他"].length > 0) {
-                totalModelCount += groups["其他"].length;
-                html += `
-                    <div class="section">
-                        <div class="section-title">
-                            <span class="section-name">📦 其他</span>
-                            <span class="section-count">${groups["其他"].length} 个实验</span>
-                        </div>
-                        <div class="grid">
-                            ${groups["其他"].map(renderCard).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            container.innerHTML = html || '<div class="empty">✨ 还没有添加任何模型，请在代码中编辑 <strong>models</strong> 数组</div>';
+            navContainer.innerHTML = navHtml;
+            container.innerHTML = html || '<div class="empty">🔍 没有找到匹配的实验</div>';
             document.getElementById('total-count').textContent = `共 ${totalModelCount} 个模型`;
         }
+
+        // 搜索监听
+        document.getElementById('search-bar').addEventListener('input', (e) => {
+            renderAllSections(e.target.value);
+        });
 
         renderAllSections();
     </script>
