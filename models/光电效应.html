@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>光电效应 - 物理增强版</title>
+    <style>
+        :root {
+            --neon-blue: #00d4ff;
+            --neon-yellow: #ccff00;
+            --neon-red: #ff4444;
+            --panel-bg: rgba(15, 22, 35, 0.95);
+            --border-glow: 0 0 25px rgba(0, 212, 255, 0.4);
+            --font-main: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: radial-gradient(circle at center, #15202b 0%, #020305 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 30px;
+            min-width: 1200px;
+        }
+
+        h1 {
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 20px var(--neon-blue);
+            margin-bottom: 30px;
+            font-size: 32px;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 30px;
+            align-items: stretch;
+        }
+
+        .canvas-container {
+            position: relative;
+            box-shadow: var(--border-glow);
+            border-radius: 15px;
+            overflow: hidden;
+            background: #000;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .energy-monitor {
+            width: 280px;
+            background: var(--panel-bg);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .monitor-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--neon-blue);
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px var(--neon-blue);
+        }
+
+        .bar-container {
+            flex-grow: 1;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #334455;
+        }
+
+        .bar {
+            width: 35px;
+            transition: height 0.15s linear, background 0.3s ease;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .bar-label {
+            font-size: 15px;
+            margin-top: 15px;
+            text-align: center;
+            color: #bdc3c7;
+            writing-mode: vertical-rl;
+            font-weight: bold;
+        }
+
+        .bar-work { background: linear-gradient(to top, #441111, var(--neon-red)); box-shadow: 0 0 15px var(--neon-red); }
+        .bar-ke { background: linear-gradient(to top, #444411, var(--neon-yellow)); box-shadow: 0 0 15px var(--neon-yellow); }
+        .bar-count { background: linear-gradient(to top, #114422, #00ff88); box-shadow: 0 0 15px #00ff88; }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            width: 1210px;
+            margin-top: 30px;
+            padding: 35px;
+            background: var(--panel-bg);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-group { display: flex; flex-direction: column; }
+        
+        label { 
+            font-size: 18px;
+            color: #d1d1d1; 
+            margin-bottom: 15px; 
+            font-weight: bold;
+        }
+
+        .value { 
+            color: var(--neon-blue); 
+            font-size: 20px;
+            font-family: 'Consolas', monospace; 
+        }
+
+        select, input[type=range] {
+            cursor: pointer; background: #0a0f16; border: 1px solid #3d4b5f; color: white;
+            padding: 12px; border-radius: 8px; outline: none; font-size: 16px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none; width: 22px; height: 22px; background: var(--neon-blue);
+            border-radius: 50%; box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .data-hud {
+            grid-column: span 3;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-top: 2px solid rgba(255,255,255,0.05);
+            padding-top: 30px;
+            margin-top: 15px;
+        }
+        .data-item { text-align: center; border-right: 1px solid rgba(255,255,255,0.1); }
+        .data-item:last-child { border-right: none; }
+        .data-label { font-size: 14px; color: #7f8c8d; margin-bottom: 10px; display: block; }
+        .data-val { font-size: 28px; font-weight: bold; color: var(--neon-yellow); font-family: 'Consolas', monospace; }
+    </style>
+</head>
+<body>
+
+    <h1>光电效应</h1>
+
+    <div class="main-layout">
+        <div class="canvas-container">
+            <canvas id="simCanvas" width="900" height="480"></canvas>
+        </div>
+
+        <div class="energy-monitor">
+            <div class="monitor-title">实时数据分析仪</div>
+            <div class="bar-container">
+                <div id="bar-photon" class="bar" style="height: 50%;"></div>
+                <div id="bar-work" class="bar bar-work" style="height: 30%;"></div>
+                <div id="bar-ke" class="bar bar-ke" style="height: 20%;"></div>
+                <div id="bar-count" class="bar bar-count" style="height: 10%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-around; width: 100%;">
+                <span class="bar-label">光子能量</span>
+                <span class="bar-label">逸出功</span>
+                <span class="bar-label">最大动能</span>
+                <span class="bar-label">电子流量</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>照射频率 Frequency <span class="value" id="freqVal">450 THz</span></label>
+            <input type="range" id="freqSlider" min="450" max="1000" value="450">
+        </div>
+        <div class="control-group">
+            <label>照射强度 Intensity <span class="value" id="intensityVal">20%</span></label>
+            <input type="range" id="intensitySlider" min="0" max="100" value="20">
+        </div>
+        <div class="control-group">
+            <label>实验靶材 Target</label>
+            <select id="metalSelect">
+                <option value="2.3" data-name="铯" data-color="#6a0dad">铯(2.3 eV)</option>
+                <option value="2.7" data-name="钠" data-color="#0047ab">钠 (2.7 eV)</option>
+                <option value="4.3" data-name="铝" data-color="#cc5500">铝 (4.3 eV)</option>
+            </select>
+        </div>
+
+        <div class="data-hud">
+            <div class="data-item">
+                <span class="data-label">光子能量 (hf)</span>
+                <span class="data-val"><span id="eDisplay">0.00</span> eV</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label">逸出功 (Φ)</span>
+                <span class="data-val"><span id="wDisplay">2.30</span> eV</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label">最大动能 (Ek)</span>
+                <span class="data-val" style="color: var(--neon-blue);"><span id="keDisplay">0.00</span> eV</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label">光电子计数率</span>
+                <span class="data-val" style="color: #00ff88;"><span id="countDisplay">0</span> CPS</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const h = 4.1357e-15; 
+        let freqTHz = 450;
+        let intensity = 0.2;
+        let workFunction = 2.3;
+        let metalColor = "#6a0dad";
+        let metalName = "铯";
+        let electrons = [];
+
+        function freqToRGB(f_THz, alpha = 1) {
+            if (f_THz < 480) return `rgba(255, 30, 30, ${alpha})`;
+            if (f_THz < 530) return `rgba(255, 140, 0, ${alpha})`;
+            if (f_THz < 580) return `rgba(210, 255, 0, ${alpha})`;
+            if (f_THz < 660) return `rgba(0, 255, 120, ${alpha})`;
+            if (f_THz < 750) return `rgba(0, 130, 255, ${alpha})`;
+            return `rgba(160, 40, 255, ${alpha})`;
+        }
+
+        class Electron {
+            constructor(ke) {
+                this.x = 735; 
+                this.y = 180 + Math.random() * 140;
+                
+                // 物理优化：实现向左侧随机扩散
+                // 速率由初动能决定
+                const speed = Math.sqrt(ke) * 4.5 + 1.5;
+                // 随机角度：向左约 120 度的扇形区域 (π/3 到 -π/3)
+                const angle = (Math.random() - 0.5) * (Math.PI * 0.66); 
+                
+                this.vx = -Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                
+                this.active = true;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // 边界检测：超出画布或撞击到左侧设备则消失
+                if (this.x < 150 || this.y < 0 || this.y > canvas.height) {
+                    this.active = false;
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = "#ccff00";
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = "#ccff00";
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function drawFlashlight(color) {
+            ctx.save();
+            let hGrad = ctx.createLinearGradient(20, 215, 20, 265);
+            hGrad.addColorStop(0, "#2c3e50");
+            hGrad.addColorStop(0.5, "#7f8c8d");
+            hGrad.addColorStop(1, "#2c3e50");
+            ctx.fillStyle = hGrad;
+            ctx.fillRect(20, 215, 100, 50);
+            
+            ctx.beginPath();
+            ctx.moveTo(120, 200);
+            ctx.lineTo(180, 160);
+            ctx.lineTo(180, 320);
+            ctx.lineTo(120, 280);
+            ctx.closePath();
+            let headGrad = ctx.createLinearGradient(120, 160, 180, 160);
+            headGrad.addColorStop(0, "#34495e");
+            headGrad.addColorStop(1, "#95a5a6");
+            ctx.fillStyle = headGrad;
+            ctx.fill();
+            
+            ctx.fillStyle = color.replace(/[^,]+(?=\))/, '1');
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.fillRect(175, 170, 8, 140);
+            ctx.restore();
+        }
+
+        function drawMetalPlate() {
+            ctx.save();
+            ctx.fillStyle = "#111";
+            ctx.fillRect(765, 135, 15, 230);
+            
+            ctx.fillStyle = metalColor;
+            ctx.fillRect(735, 130, 30, 230);
+
+            let mGrad = ctx.createLinearGradient(735, 0, 765, 0);
+            mGrad.addColorStop(0, "rgba(0,0,0,0.3)"); 
+            mGrad.addColorStop(0.45, "rgba(255,255,255,0.4)"); 
+            mGrad.addColorStop(0.55, "rgba(255,255,255,0.4)");
+            mGrad.addColorStop(1, "rgba(0,0,0,0.5)"); 
+            ctx.fillStyle = mGrad;
+            ctx.fillRect(735, 130, 30, 230);
+            
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(735, 130, 30, 230);
+
+            ctx.strokeStyle = "rgba(0,0,0,0.2)";
+            ctx.lineWidth = 1;
+            for(let i=140; i<360; i+=8) {
+                ctx.beginPath();
+                ctx.moveTo(735, i);
+                ctx.lineTo(765, i);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = "rgba(255,255,255,0.8)";
+            ctx.font = "bold 16px Segoe UI";
+            ctx.textAlign = "center";
+            ctx.fillText(metalName, 750, 115);
+            ctx.restore();
+        }
+
+        function animate() {
+            ctx.fillStyle = "#020305";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = "rgba(0, 212, 255, 0.05)";
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+            for(let i=0; i<canvas.height; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+            const photonEnergy = h * freqTHz * 1e12;
+            const ke = Math.max(0, photonEnergy - workFunction);
+            const canEmit = photonEnergy > workFunction;
+            const electronFlow = canEmit ? Math.floor(intensity * 100) : 0;
+
+            const photonColor = freqToRGB(freqTHz, 1);
+            const barP = document.getElementById('bar-photon');
+            barP.style.height = (photonEnergy / 5 * 100) + "%";
+            barP.style.background = `linear-gradient(to top, #111, ${photonColor})`;
+            barP.style.boxShadow = `0 0 15px ${photonColor}`;
+            document.getElementById('bar-work').style.height = (workFunction / 5 * 100) + "%";
+            document.getElementById('bar-ke').style.height = (ke / 5 * 100) + "%";
+            document.getElementById('bar-count').style.height = (electronFlow / 1.5) + "%";
+
+            if (intensity > 0) {
+                const colorBase = freqToRGB(freqTHz, intensity * 0.8);
+                const beamGrad = ctx.createLinearGradient(180, 0, 735, 0);
+                beamGrad.addColorStop(0, colorBase);
+                beamGrad.addColorStop(0.2, colorBase);
+                beamGrad.addColorStop(1, "rgba(0,0,0,0)");
+                ctx.fillStyle = beamGrad;
+                ctx.beginPath();
+                ctx.moveTo(180, 170); ctx.lineTo(735, 130);
+                ctx.lineTo(735, 360); ctx.lineTo(180, 310);
+                ctx.fill();
+            }
+
+            drawMetalPlate();
+            drawFlashlight(freqToRGB(freqTHz));
+
+            if (canEmit && Math.random() < intensity) {
+                // 每帧根据强度产生多个电子，增强扩散视觉效果
+                const spawnCount = Math.ceil(intensity * 5);
+                for(let i=0; i < spawnCount; i++) {
+                    electrons.push(new Electron(ke));
+                }
+            }
+            electrons = electrons.filter(e => e.active);
+            electrons.forEach(e => { e.update(); e.draw(); });
+
+            document.getElementById('eDisplay').innerText = photonEnergy.toFixed(2);
+            document.getElementById('wDisplay').innerText = workFunction.toFixed(2);
+            document.getElementById('keDisplay').innerText = ke.toFixed(2);
+            document.getElementById('countDisplay').innerText = electronFlow;
+
+            requestAnimationFrame(animate);
+        }
+
+        document.getElementById('freqSlider').oninput = (e) => {
+            freqTHz = parseInt(e.target.value);
+            document.getElementById('freqVal').innerText = freqTHz + " THz";
+        };
+        document.getElementById('intensitySlider').oninput = (e) => {
+            intensity = e.target.value / 100;
+            document.getElementById('intensityVal').innerText = e.target.value + "%";
+        };
+        document.getElementById('metalSelect').onchange = (e) => {
+            const opt = e.target.options[e.target.selectedIndex];
+            workFunction = parseFloat(e.target.value);
+            metalColor = opt.getAttribute('data-color');
+            metalName = opt.getAttribute('data-name');
+        };
+
+        animate();
+    </script>
+</body>
+</html>

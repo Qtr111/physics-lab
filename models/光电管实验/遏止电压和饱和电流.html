@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>光电效应的遏止电压和饱和电流</title>
+    <style>
+        :root {
+            --neon-blue: #00d4ff;
+            --neon-yellow: #ccff00;
+            --neon-pink: #ff00cc;
+            --panel-bg: rgba(10, 17, 24, 0.95);
+            --card-bg: rgba(25, 35, 50, 0.7);
+            --border-color: rgba(0, 212, 255, 0.3);
+            --text-glow: 0 0 8px rgba(0, 212, 255, 0.6);
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Orbitron', 'Microsoft YaHei', sans-serif;
+            background: #05080a;
+            color: #e0e6ed;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; 
+            margin: 0;
+            padding: 20px 20px 20px 50px;
+            overflow-x: hidden;
+        }
+
+        .main-layout {
+            display: flex;
+            align-items: flex-start;
+            gap: 40px;
+        }
+
+        .side-image {
+            width: 300px;
+            height: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.15);
+            filter: brightness(0.9) contrast(1.1);
+        }
+
+        /* 实验室框架 */
+        .lab-frame {
+            display: flex;
+            gap: 25px;
+            background: var(--panel-bg);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(0, 212, 255, 0.05);
+            backdrop-filter: blur(10px);
+            height: 740px; /* 匹配左侧画布总高度 */
+        }
+
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        canvas {
+            background: radial-gradient(circle at center, #0a1118 0%, #000 100%);
+            border-radius: 12px;
+            border: 1px solid #1a2533;
+        }
+
+        /* 控制面板优化 */
+        .control-panel {
+            width: 440px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* 确保子元素纵向等间距分布 */
+        }
+
+        /* 仪表卡片 */
+        .meter-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .meter-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .meter-label { 
+            font-size: 14px; 
+            color: #8899aa; 
+            text-transform: uppercase; 
+            letter-spacing: 2px;
+            margin-bottom: 8px; 
+        }
+
+        .meter-val { 
+            font-size: 36px; 
+            color: var(--neon-yellow); 
+            font-family: 'Consolas', monospace; 
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(204, 255, 0, 0.3);
+        }
+
+        /* 滑动条组优化 - 等间距纵向分布 */
+        .slider-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 25px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex-grow: 1; /* 自动撑开 */
+            margin-top: 15px;
+        }
+        
+        .slider-group:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+
+        label { 
+            display: block; 
+            font-size: 18px; /* 增大字体 */
+            color: #e0e6ed; 
+            margin-bottom: 15px; 
+            font-weight: 500;
+        }
+
+        .val-hint { 
+            font-size: 20px; /* 增大数值提示字体 */
+            color: var(--neon-blue); 
+            font-family: 'Consolas', monospace;
+            font-weight: bold; 
+            float: right; 
+            text-shadow: var(--text-glow);
+        }
+        
+        /* 自定义滑动条样式 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #1a202c;
+            border-radius: 4px;
+            outline: none;
+            margin-top: 10px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--neon-blue);
+            border: 3px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+    </style>
+</head>
+<body>
+
+    <h2 style="letter-spacing: 5px; color: var(--neon-blue); text-shadow: 0 0 15px var(--neon-blue); margin-bottom: 25px;">
+        光电管实验 <span style="font-size: 14px; vertical-align: middle; opacity: 0.7;"> </span>
+    </h2>
+
+    <div class="main-layout">
+        <img src="实验原理图.png" alt="实验原理图" class="side-image">
+
+        <div class="lab-frame">
+            <div class="canvas-container">
+                <canvas id="mainCanvas" width="800" height="480"></canvas>
+                <canvas id="graphCanvas" width="800" height="240"></canvas>
+            </div>
+
+            <div class="control-panel">
+                <div class="monitor-section">
+                    <div class="meter-card">
+                        <div class="meter-label">电压值 (U)</div>
+                        <div class="meter-val"><span id="vReadout">0.00</span> <span style="font-size: 18px;">V</span></div>
+                    </div>
+
+                    <div class="meter-card" style="border-color: var(--neon-yellow);">
+                        <div class="meter-label">电流值 (I)</div>
+                        <div class="meter-val" style="color: var(--neon-yellow);"><span id="aReadout">0.00</span> <span style="font-size: 18px;">μA</span></div>
+                    </div>
+                </div>
+
+                <div class="slider-group">
+                    <label>光照频率 <span class="val-hint" id="fText">450 THz</span></label>
+                    <input type="range" id="fSlider" min="450" max="850" value="450">
+                </div>
+
+                <div class="slider-group">
+                    <label>光照强度 <span class="val-hint" id="iText">50%</span></label>
+                    <input type="range" id="iSlider" min="0" max="100" value="50">
+                </div>
+
+                <div class="slider-group">
+                    <label>极板电压调节 <span class="val-hint" id="uHint">0.0 V</span></label>
+                    <input type="range" id="vSlider" min="-200" max="230" value="0" step="1">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const gCanvas = document.getElementById('graphCanvas');
+        const gCtx = gCanvas.getContext('2d');
+        
+        const h_eff = 0.04;        
+        const workFunc_eff = 14.0; 
+        const accel_factor = 0.0035; 
+
+        let state = {
+            freq: 450,
+            intensity: 0.5,
+            uAK: 0,
+            electrons: [],
+            emitAccumulator: 0
+        };
+
+        function getUc(freq) {
+            return Math.max(0, (h_eff * freq - workFunc_eff));
+        }
+
+        function getTheoreticalI(v, freq, intens) {
+            const Uc = getUc(freq);
+            if (v <= -Uc || intens <= 0) return 0;
+            const Im = intens * 60;
+            const k = 0.38; 
+            const rawI = Im / (1 + Math.exp(-k * (v + Uc - 3.0)));
+            const zeroPoint = Im / (1 + Math.exp(-k * (-Uc + Uc - 3.0)));
+            return Math.max(0, (rawI - zeroPoint) * 1.15);
+        }
+
+        class Electron {
+            constructor(maxVTotal) {
+                this.x = 595; 
+                this.y = 110 + Math.random() * 80; 
+                const angle = (Math.random() - 0.5) * Math.PI * 0.7; 
+                const speed = maxVTotal * (0.8 + Math.random() * 0.2);
+                this.vx = -Math.cos(angle) * speed; 
+                this.vy = Math.sin(angle) * speed; 
+                this.active = true;
+            }
+            update(V_AK) {
+                let ax = -V_AK * accel_factor; 
+                this.vx += ax; 
+                if (V_AK > 0) {
+                    const focusStrength = 1 - (Math.min(V_AK, 23) / 50); 
+                    this.vy *= focusStrength;
+                }
+                this.x += this.vx; 
+                this.y += this.vy;
+                
+                if (this.x <= 200) {
+                    if (this.y >= 75 && this.y <= 225) {
+                        this.active = false;
+                        return;
+                    }
+                }
+                if (this.x < 152 || this.x > 648 || this.y < 42 || this.y > 258) {
+                    this.active = false;
+                }
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, 2.2, 0, Math.PI*2);
+                ctx.fillStyle = "#ccff00"; ctx.fill();
+            }
+        }
+
+        function drawElectricField(v) {
+            const absV = Math.abs(v);
+            if (absV < 0.1) return;
+            ctx.save();
+            const lineCount = Math.floor(3 + (absV / 23) * 12);
+            const opacity = 0.05 + (absV / 23) * 0.25;
+            ctx.strokeStyle = `rgba(0, 212, 255, ${opacity})`;
+            ctx.lineWidth = 1.5;
+            const startY = 80;
+            const endY = 220;
+            const stepY = (endY - startY) / (lineCount + 1);
+            const direction = v > 0 ? 1 : -1; 
+            for (let i = 1; i <= lineCount; i++) {
+                const y = startY + i * stepY;
+                ctx.beginPath();
+                ctx.moveTo(210, y);
+                ctx.lineTo(590, y);
+                ctx.stroke();
+                ctx.fillStyle = `rgba(0, 212, 255, ${opacity * 2.5})`;
+                const arrowPositions = [0.25, 0.5, 0.75];
+                arrowPositions.forEach(pos => {
+                    const x = 210 + (590 - 210) * pos;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x - 6 * direction, y - 4);
+                    ctx.lineTo(x - 6 * direction, y + 4);
+                    ctx.fill();
+                });
+            }
+            ctx.restore();
+        }
+
+        function drawGraph() {
+            gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
+            const zeroX = 350; const zeroY = 180; const scaleX = 10; const scaleY = 2.5;
+            const Uc = getUc(state.freq);
+
+            gCtx.strokeStyle = "rgba(0, 212, 255, 0.05)";
+            gCtx.lineWidth = 1;
+            for(let x=0; x<gCanvas.width; x+=40) {
+                gCtx.beginPath(); gCtx.moveTo(x, 0); gCtx.lineTo(x, gCanvas.height); gCtx.stroke();
+            }
+            for(let y=0; y<gCanvas.height; y+=40) {
+                gCtx.beginPath(); gCtx.moveTo(0, y); gCtx.lineTo(gCanvas.width, y); gCtx.stroke();
+            }
+            
+            gCtx.strokeStyle = "rgba(255, 255, 255, 0.3)"; 
+            gCtx.lineWidth = 2;
+            gCtx.beginPath();
+            gCtx.moveTo(20, zeroY); gCtx.lineTo(gCanvas.width - 20, zeroY); 
+            gCtx.moveTo(zeroX, 30); gCtx.lineTo(zeroX, gCanvas.height - 20); 
+            gCtx.stroke();
+
+            gCtx.fillStyle = "#00d4ff";
+            gCtx.font = "bold 18px 'Consolas'";
+            gCtx.fillText("I (μA)", zeroX + 15, 35);           
+            gCtx.fillText("U (V)", gCanvas.width - 60, zeroY + 25); 
+
+            const color = varColor(state.freq);
+            
+            gCtx.shadowBlur = 15;
+            gCtx.shadowColor = color;
+            gCtx.strokeStyle = color; 
+            gCtx.lineWidth = 3; 
+            gCtx.beginPath();
+            let first = true;
+            for (let v = -Uc; v <= 35; v += 0.5) {
+                const iVal = getTheoreticalI(v, state.freq, state.intensity);
+                const x = zeroX + v * scaleX;
+                const y = zeroY - iVal * scaleY;
+                if (x > gCanvas.width - 20) break;
+                if (first) { gCtx.moveTo(x, y); first = false; }
+                else { gCtx.lineTo(x, y); }
+            }
+            gCtx.stroke();
+            gCtx.shadowBlur = 0; 
+
+            const curV = state.uAK / 10;
+            const curI = getTheoreticalI(curV, state.freq, state.intensity);
+            const curX = zeroX + curV * scaleX; const realY = zeroY - curI * scaleY;
+            
+            gCtx.setLineDash([4, 4]);
+            gCtx.strokeStyle = "rgba(255,255,255,0.2)";
+            gCtx.beginPath(); 
+            gCtx.moveTo(curX, zeroY); gCtx.lineTo(curX, realY); 
+            gCtx.lineTo(zeroX, realY); 
+            gCtx.stroke();
+            gCtx.setLineDash([]);
+
+            gCtx.fillStyle = "white"; 
+            gCtx.beginPath(); 
+            gCtx.arc(curX, realY, 5, 0, Math.PI*2); 
+            gCtx.fill();
+            gCtx.strokeStyle = color;
+            gCtx.lineWidth = 2;
+            gCtx.stroke();
+            
+            if (curV < 0) { 
+                gCtx.fillStyle = "#ffaa00"; 
+                gCtx.font = "bold 13px sans-serif"; 
+                gCtx.fillText("-Uc = " + (-Uc).toFixed(1) + "V", zeroX - Uc*scaleX - 45, zeroY + 25); 
+            }
+        }
+
+        function varColor(f) {
+            if (f < 500) return "#ff4444";
+            if (f < 580) return "#ffdd44";
+            if (f < 680) return "#44ff44";
+            if (f < 780) return "#44ccff";
+            return "#cc44ff";
+        }
+
+        function drawCircuit() {
+            ctx.save();
+            ctx.strokeStyle = "#D4AF37"; 
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "rgba(212, 175, 55, 0.4)";
+            ctx.beginPath(); ctx.roundRect(150, 40, 500, 220, 110); 
+            ctx.strokeStyle = "rgba(0, 212, 255, 0.25)"; ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.fillStyle = "#777"; ctx.fillRect(190, 80, 10, 140); 
+            ctx.fillStyle = "#6a0dad"; ctx.fillRect(600, 80, 15, 140); 
+            ctx.strokeStyle = "#D4AF37"; ctx.lineWidth = 3; 
+            const voltY = 290;
+            ctx.beginPath();
+            ctx.moveTo(195, 200); ctx.lineTo(195, voltY); ctx.lineTo(382, voltY);
+            ctx.moveTo(418, voltY); ctx.lineTo(607, voltY); ctx.lineTo(607, 200);
+            ctx.stroke();
+            const sliderY = 350;
+            ctx.save();
+            const grad = ctx.createLinearGradient(200, sliderY, 200, sliderY + 15);
+            grad.addColorStop(0, "#808080");   
+            grad.addColorStop(0.3, "#f0f0f0"); 
+            grad.addColorStop(0.5, "#ffffff"); 
+            grad.addColorStop(0.7, "#f0f0f0"); 
+            grad.addColorStop(1, "#606060");   
+            ctx.fillStyle = grad;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = "rgba(224, 224, 224, 0.8)";
+            ctx.fillRect(200, sliderY, 400, 15);
+            ctx.restore();
+            ctx.beginPath();
+            ctx.moveTo(195, voltY); ctx.lineTo(195, sliderY + 7.5); ctx.lineTo(200, sliderY + 7.5);
+            let contactX = 200 + (state.uAK + 200) * (400 / 430); 
+            ctx.moveTo(607, voltY); ctx.lineTo(607, sliderY - 20); ctx.lineTo(contactX, sliderY - 20); ctx.lineTo(contactX, sliderY);
+            ctx.stroke();
+            const powerY = 410;
+            ctx.beginPath();
+            ctx.moveTo(200, sliderY + 7.5); ctx.lineTo(200, powerY); ctx.lineTo(395, powerY); 
+            ctx.moveTo(405, powerY); ctx.lineTo(600, powerY); ctx.lineTo(600, sliderY + 7.5); 
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.lineWidth = 4; ctx.moveTo(395, powerY - 8); ctx.lineTo(395, powerY + 8); 
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.lineWidth = 1.5; ctx.moveTo(405, powerY - 15); ctx.lineTo(405, powerY + 15); 
+            ctx.stroke();
+            drawMeter(400, voltY, "V");
+            drawMeter(195, (voltY + sliderY)/2, "μA");
+            ctx.restore();
+        }
+
+        function drawMeter(x, y, label) {
+            ctx.save(); ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2);
+            ctx.fillStyle = "#1a2533"; ctx.fill(); 
+            ctx.strokeStyle = "#D4AF37"; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = "white"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(label, x, y); ctx.restore();
+        }
+
+        function animate() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            const V_AK = state.uAK / 10;
+            const Uc = getUc(state.freq);
+            drawCircuit();
+            drawElectricField(V_AK); 
+
+            if (state.intensity > 0) {
+                ctx.strokeStyle = varColor(state.freq); ctx.globalAlpha = 0.5;
+                const rays = Math.floor(state.intensity * 12) + 2;
+                for(let i = 0; i < rays; i++) {
+                    ctx.beginPath(); ctx.moveTo(400, 5); ctx.lineTo(600, 85 + (130/rays)*i); ctx.stroke();
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+            drawGraph();
+            const maxVTotal = Math.sqrt(2 * accel_factor * Uc * 390);
+            if (state.intensity > 0 && Uc > 0) {
+                state.emitAccumulator += (state.intensity * 3.5); 
+                while (state.emitAccumulator >= 1) {
+                    state.electrons.push(new Electron(maxVTotal));
+                    state.emitAccumulator -= 1;
+                }
+            }
+            state.electrons = state.electrons.filter(e => {
+                e.update(V_AK);
+                if (e.active) e.draw();
+                return e.active;
+            });
+
+            const curI = getTheoreticalI(V_AK, state.freq, state.intensity);
+            document.getElementById('vReadout').innerText = V_AK.toFixed(2);
+            document.getElementById('aReadout').innerText = curI.toFixed(2);
+            requestAnimationFrame(animate);
+        }
+
+        document.getElementById('fSlider').oninput = e => {
+            state.freq = parseInt(e.target.value);
+            document.getElementById('fText').innerText = state.freq + " THz";
+        };
+        document.getElementById('iSlider').oninput = e => {
+            state.intensity = e.target.value / 100;
+            document.getElementById('iText').innerText = e.target.value + "%";
+        };
+        document.getElementById('vSlider').oninput = e => {
+            state.uAK = parseInt(e.target.value);
+            document.getElementById('uHint').innerText = (state.uAK/10).toFixed(1) + " V";
+        };
+        animate();
+    </script>
+</body>
+</html>

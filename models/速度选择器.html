@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>速度选择器</title>
+    <style>
+        :root {
+            --bg-dark: #020617;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --neon-blue: #38bdf8;
+            --neon-green: #4ade80;
+            --neon-red: #f87171;
+            --text-main: #f1f5f9;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .lab-wrapper {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            height: 90vh;
+        }
+
+        /* 侧边控制面板 */
+        .side-panel {
+            width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        /* 磨砂玻璃卡片 */
+        .p-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border-left: 5px solid var(--neon-blue);
+            transition: all 0.3s;
+        }
+
+        .p-card:hover {
+            border-left-width: 10px;
+            transform: translateX(5px);
+            background: rgba(30, 41, 59, 0.9);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--neon-blue);
+        }
+
+        /* 参数行优化 */
+        .ctrl-row {
+            margin: 12px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ctrl-label-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 15px;
+            color: #94a3b8;
+        }
+
+        .val-display {
+            font-size: 24px; /* 进一步增大字号 */
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 12px var(--neon-blue);
+        }
+
+        /* 滑动条样式 */
+        input[type=range] {
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #334155;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--neon-blue);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* 按钮 */
+        .btn {
+            border: none;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-add {
+            background: transparent;
+            border: 1px dashed var(--neon-green);
+            color: var(--neon-green);
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .btn-add:hover {
+            background: rgba(74, 222, 128, 0.1);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+        }
+
+        .btn-fire {
+            background: var(--neon-blue);
+            color: #000;
+            flex-grow: 1;
+            font-size: 15px;
+        }
+
+        .btn-fire:hover {
+            box-shadow: 0 0 20px var(--neon-blue);
+            background: #7dd3fc;
+        }
+
+        /* 画布中心 */
+        .center-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        canvas {
+            background: #000;
+            border: 2px solid #334155;
+            border-radius: 16px;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
+        }
+
+        /* 顶部控制栏 */
+        .hud-bar {
+            width: 100%;
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .hud-val {
+            font-size: 26px;
+            font-family: monospace;
+            color: var(--neon-green);
+            text-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .hud-label {
+            font-size: 14px;
+            color: #94a3b8;
+            font-weight: bold;
+        }
+
+        select {
+            background: #0f172a;
+            color: white;
+            border: 1px solid #334155;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="lab-wrapper">
+        <div class="side-panel" id="left-panel">
+            <button class="btn btn-add" onclick="addNewParticle()">+ 初始化新粒子</button>
+        </div>
+
+        <div class="center-area">
+            <div class="hud-bar">
+                <div class="hud-item">
+                    <span class="hud-label">电场强度 E</span>
+                    <input type="range" id="env-e" min="0" max="200" step="10" value="100">
+                    <span class="hud-val" id="env-e-v">100</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">磁场强度 B</span>
+                    <input type="range" id="env-b" min="1" max="20" step="1" value="10">
+                    <span class="hud-val" id="env-b-v">10</span>
+                </div>
+                <div class="hud-item" style="flex-direction: row; gap: 15px;">
+                    <button class="btn" style="background:#64748b; color:white; min-width:100px;" id="pause-btn">暂停系统</button>
+                    <button class="btn" style="background:#ef4444; color:white;" onclick="location.reload()">重启实验</button>
+                </div>
+            </div>
+
+            <canvas id="canvas" width="900" height="550"></canvas>
+        </div>
+
+        <div class="side-panel" id="right-panel"></div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let isPaused = false;
+    let particleCounter = 0;
+
+    const cfg = {
+        topY: 80, bottomY: 470,
+        leftX: 120, rightX: 780,
+        zoom: 22,
+        sensitivity: 2.8
+    };
+
+    const envE = document.getElementById('env-e');
+    const envB = document.getElementById('env-b');
+    envE.oninput = () => document.getElementById('env-e-v').innerText = envE.value;
+    envB.oninput = () => document.getElementById('env-b-v').innerText = envB.value;
+
+    function addNewParticle() {
+        particleCounter++;
+        const pId = 'p' + Date.now();
+        const color = `hsl(${Math.random() * 360}, 85%, 65%)`;
+        
+        const pObj = {
+            id: pId, name: `粒子探测器 #${particleCounter.toString().padStart(2, '0')}`,
+            x: 50, y: 275, vx: 10.0, vy: 0,
+            q: 1, m: 1, side: 'left',
+            color: color, history: [],
+            isFlying: false, active: true
+        };
+        particles.push(pObj);
+        renderCard(pObj);
+    }
+
+    function renderCard(p) {
+        const card = document.createElement('div');
+        card.className = 'p-card';
+        card.id = 'card-' + p.id;
+        card.style.borderLeftColor = p.color;
+        
+        card.innerHTML = `
+            <div class="card-header">
+                <span>${p.name}</span>
+                <button class="btn" style="background:transparent; color:#ef4444; font-size:20px; padding:0" onclick="removeP('${p.id}')">×</button>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-label-group"><span>初速度 V</span><span class="val-display" id="val-vx-${p.id}">10.0</span></div>
+                <input type="range" min="8" max="12" step="0.2" value="10.0" oninput="updateP('${p.id}','vx',this.value)">
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-label-group"><span>电荷量 Q</span><span class="val-display" id="val-q-${p.id}">1</span></div>
+                <input type="range" min="-3" max="3" step="1" value="1" oninput="updateP('${p.id}','q',this.value)">
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-label-group"><span>质量 M</span><span class="val-display" id="val-m-${p.id}">1.0</span></div>
+                <input type="range" min="0.1" max="5" step="0.1" value="1" oninput="updateP('${p.id}','m',this.value)">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <select onchange="updateP('${p.id}','side',this.value)">
+                    <option value="left">左侧入口</option>
+                    <option value="right">右侧入口</option>
+                </select>
+                <button class="btn btn-fire" id="fire-${p.id}" onclick="fireP('${p.id}')">启动发射</button>
+            </div>
+        `;
+        const target = (particleCounter % 2 !== 0) ? 'left-panel' : 'right-panel';
+        document.getElementById(target).appendChild(card);
+    }
+
+    function updateP(id, prop, val) {
+        const p = particles.find(i => i.id === id);
+        if(!p) return;
+        if(prop === 'side') p.side = val;
+        else p[prop] = parseFloat(val);
+        
+        const displaySpan = document.getElementById(`val-${prop}-${id}`);
+        if(displaySpan) displaySpan.innerText = (prop==='q') ? val : parseFloat(val).toFixed(1);
+        resetP(p);
+    }
+
+    function fireP(id) {
+        const p = particles.find(i => i.id === id);
+        if(p) { p.isFlying = true; document.getElementById('fire-'+id).innerText = "重置待发"; }
+    }
+
+    function resetP(p) {
+        p.active = true; p.isFlying = false; p.history = []; p.vy = 0;
+        p.x = p.side === 'left' ? 50 : canvas.width - 50;
+        p.y = 275;
+        const btn = document.getElementById('fire-'+p.id);
+        if(btn) btn.innerText = "启动发射";
+    }
+
+    function removeP(id) {
+        particles = particles.filter(i => i.id !== id);
+        const card = document.getElementById('card-' + id);
+        if(card) card.remove();
+    }
+
+    function drawArrow(x, y1, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x, y1); ctx.lineTo(x, y2);
+        ctx.strokeStyle = "rgba(248, 113, 113, 0.4)";
+        ctx.setLineDash([15, 8]);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(248, 113, 113, 0.8)";
+        ctx.beginPath();
+        ctx.moveTo(x - 12, y2 - 20); ctx.lineTo(x + 12, y2 - 20); ctx.lineTo(x, y2);
+        ctx.fill();
+    }
+
+    function mainLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 极板绘制
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "rgba(56, 189, 248, 0.5)";
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(cfg.leftX, cfg.topY-10, cfg.rightX - cfg.leftX, 10);
+        ctx.fillRect(cfg.leftX, cfg.bottomY, cfg.rightX - cfg.leftX, 10);
+        ctx.shadowBlur = 0;
+
+        // 场区绘制
+        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+        ctx.fillRect(cfg.leftX, cfg.topY, cfg.rightX - cfg.leftX, cfg.bottomY - cfg.topY);
+        
+        // 电场线
+        for(let x = cfg.leftX + 60; x < cfg.rightX; x += 120) drawArrow(x, cfg.topY, cfg.bottomY);
+
+        // 磁场绘制
+        ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
+        ctx.font = "bold 28px Arial";
+        for(let x = cfg.leftX + 40; x < cfg.rightX; x += 80) {
+            for(let y = cfg.topY + 50; y < cfg.bottomY; y += 80) ctx.fillText("×", x, y);
+        }
+
+        const E = parseFloat(envE.value);
+        const B = parseFloat(envB.value);
+
+        particles.forEach(p => {
+            if (!isPaused && p.isFlying && p.active) {
+                const dt = 0.012;
+                if (p.x >= cfg.leftX && p.x <= cfg.rightX) {
+                    const realVx = p.side === 'left' ? p.vx : -p.vx;
+                    const ay = ((p.q * E - p.q * realVx * B) / p.m) * cfg.sensitivity;
+                    p.vy += ay * dt;
+                }
+                const dir = p.side === 'left' ? p.vx : -p.vx;
+                p.x += dir * dt * cfg.zoom;
+                p.y += p.vy * dt * cfg.zoom;
+                p.history.push({x: p.x, y: p.y});
+
+                if(p.y <= cfg.topY || p.y >= cfg.bottomY || p.x < 0 || p.x > canvas.width) p.active = false;
+            }
+
+            // 轨迹绘制
+            if(p.history.length > 0) {
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = p.color;
+                ctx.beginPath();
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = 4;
+                p.history.forEach((pos, i) => i === 0 ? ctx.moveTo(pos.x, pos.y) : ctx.lineTo(pos.x, pos.y));
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // 粒子绘制
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 9, 0, Math.PI*2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+
+        requestAnimationFrame(mainLoop);
+    }
+
+    document.getElementById('pause-btn').onclick = function() {
+        isPaused = !isPaused;
+        this.innerText = isPaused ? "继续实验" : "暂停系统";
+    };
+
+    mainLoop();
+</script>
+</body>
+</html>
