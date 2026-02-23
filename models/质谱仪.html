@@ -5,130 +5,59 @@
     <title>质谱仪</title>
     <style>
         :root {
-            --bg-dark: #0a0a12;
-            --panel-bg: rgba(25, 25, 45, 0.85);
-            --accent-purple: #9d4edd;
-            --accent-blue: #4cc9f0;
-            --text-light: #e0e1dd;
+            --bg-dark: #05050a;
+            --panel-bg: rgba(20, 20, 35, 0.95);
+            --accent-purple: #bf36ff; 
+            --accent-blue: #00f2ff;   
+            --text-light: #f0f0f5;
             --glass-border: rgba(255, 255, 255, 0.1);
         }
 
         body { 
             background-color: var(--bg-dark); 
-            background-image: radial-gradient(circle at center, #1b1b2f 0%, #0a0a12 100%);
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-            font-family: "Segoe UI", "Microsoft YaHei", sans-serif; 
-            color: var(--text-light);
+            background-image: radial-gradient(circle at center, #101025 0%, #05050a 100%);
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0; font-family: "Segoe UI", sans-serif; color: var(--text-light);
         }
 
         #app-container { 
-            width: 1180px; 
-            height: 900px; 
-            background-color: #000; 
-            border: 1px solid var(--glass-border);
-            position: relative; 
-            display: flex; 
-            overflow: hidden; 
-            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5), 0 0 20px rgba(157, 78, 221, 0.2);
-            border-radius: 12px;
+            width: 1200px; height: 900px; background-color: #000; 
+            border: 1px solid var(--glass-border); position: relative; 
+            display: flex; overflow: hidden; border-radius: 16px;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
         }
         
-        /* 画布区域：增加网格背景 */
-        #sim-canvas { 
-            background-color: #000;
-            background-image: 
-                linear-gradient(rgba(157, 78, 221, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(157, 78, 221, 0.05) 1px, transparent 1px);
-            background-size: 40px 40px;
-            flex-shrink: 0; 
-        }
+        #sim-canvas { background-color: #000; flex-shrink: 0; }
 
-        /* 右侧控制面板：磨砂玻璃风格 */
         #control-panel { 
-            flex-grow: 1; 
-            height: 100%; 
-            background: var(--panel-bg);
-            backdrop-filter: blur(15px);
-            border-left: 1px solid var(--glass-border); 
-            padding: 30px 20px; 
-            display: flex; 
-            flex-direction: column; 
-            box-sizing: border-box;
-            overflow-y: auto;
-            z-index: 10;
+            flex-grow: 1; background: var(--panel-bg); backdrop-filter: blur(20px);
+            border-left: 1px solid var(--glass-border); padding: 30px 20px; 
+            display: flex; flex-direction: column; overflow-y: auto;
         }
 
-        h4 { 
-            margin: 0 0 20px 0; 
-            color: var(--accent-blue); 
-            font-size: 18px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 1px solid var(--glass-border);
-            padding-bottom: 10px;
-        }
+        h4 { color: var(--accent-purple); margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1.5px; }
 
-        /* 粒子配置项 */
-        #particle-configs { margin-bottom: 15px; }
         .particle-item { 
-            background: rgba(255, 255, 255, 0.05); 
-            border: 1px solid var(--glass-border);
-            padding: 15px; 
-            margin-bottom: 15px; 
-            border-radius: 10px; 
-            position: relative;
-            transition: transform 0.2s;
+            background: rgba(255, 255, 255, 0.03); padding: 15px; 
+            margin-bottom: 15px; border-radius: 10px; position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .particle-item:hover { transform: translateX(-5px); background: rgba(255, 255, 255, 0.08); }
 
-        .input-group { display: flex; align-items: center; margin-bottom: 8px; font-size: 13px; }
-        .input-group label { width: 95px; color: #aaa; }
+        .input-group { display: flex; align-items: center; margin-bottom: 10px; font-size: 13px; }
+        .input-group label { width: 95px; color: #999; }
         .input-group input { 
-            background: rgba(0,0,0,0.3); 
-            border: 1px solid var(--glass-border); 
-            color: var(--accent-blue);
-            padding: 5px 8px; 
-            border-radius: 4px; 
-            outline: none;
-            width: 70px;
-        }
-        .input-group input:focus { border-color: var(--accent-purple); }
-        
-        .remove-btn { 
-            position: absolute; right: 10px; top: 10px; cursor: pointer; 
-            color: #ff4d4d; border: none; background: none; font-size: 18px; opacity: 0.6;
-        }
-        .remove-btn:hover { opacity: 1; }
-
-        .btn-group { margin-top: auto; display: flex; flex-direction: column; gap: 15px; }
-        button { 
-            padding: 14px; 
-            border-radius: 8px; 
-            border: none;
-            cursor: pointer; 
-            font-size: 14px; 
-            font-weight: 600; 
-            letter-spacing: 1px;
-            transition: all 0.3s;
-            text-transform: uppercase;
+            background: #000; border: 1px solid #333; color: var(--accent-blue);
+            padding: 5px; border-radius: 4px; width: 65px; text-align: center;
         }
         
-        #btn-add { background: rgba(76, 201, 240, 0.15); color: var(--accent-blue); border: 1px solid var(--accent-blue); }
-        #btn-add:hover { background: var(--accent-blue); color: #000; box-shadow: 0 0 15px var(--accent-blue); }
+        .remove-btn { position: absolute; right: 10px; top: 10px; color: #ff4d4d; border: none; background: none; cursor: pointer; font-size: 20px; }
 
-        #btn-run { background: linear-gradient(45deg, #7209b7, #b5179e); color: white; box-shadow: 0 4px 15px rgba(114, 9, 183, 0.4); }
-        #btn-run:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(181, 23, 158, 0.6); }
-
-        #btn-reset { background: transparent; color: #666; border: 1px solid #444; }
-        #btn-reset:hover { color: #fff; border-color: #eee; }
-
-        /* 隐藏滚动条 */
-        #control-panel::-webkit-scrollbar { width: 4px; }
-        #control-panel::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+        .btn-group { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
+        button { padding: 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; transition: all 0.3s; }
+        
+        #btn-add { background: rgba(0, 242, 255, 0.1); color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+        #btn-run { background: linear-gradient(45deg, #7b2ff7, #bf36ff); color: white; box-shadow: 0 4px 15px rgba(191, 54, 255, 0.3); }
+        #btn-reset { background: transparent; color: #666; border: 1px solid #333; }
     </style>
 </head>
 <body>
@@ -137,25 +66,25 @@
     <canvas id="sim-canvas" width="850" height="900"></canvas>
     
     <div id="control-panel">
+        <h4>粒子注入系统</h4>
         <div id="particle-configs"></div>
+        <button id="btn-add">+ 增加实验样本</button>
 
-        <button id="btn-add">+ 注入新粒子</button>
-
-        <div class="env-settings">
-            <h4>实验室参数</h4>
+        <div class="env-settings" style="margin-top:30px">
+            <h4>环境场参数</h4>
             <div class="input-group">
-                <label>加速电压 U :</label>
-                <input type="number" id="U" value="200">
+                <label>加速电压 U:</label>
+                <input type="number" id="U" value="250">
             </div>
             <div class="input-group">
-                <label>磁感强度 B :</label>
-                <input type="number" id="B" value="10">
+                <label>磁感强度 B:</label>
+                <input type="number" id="B" value="8">
             </div>
         </div>
 
         <div class="btn-group">
-            <button id="btn-run">启动加速器</button>
-            <button id="btn-reset">清空重置</button>
+            <button id="btn-run">开始粒子加速</button>
+            <button id="btn-reset">清空设备</button>
         </div>
     </div>
 </div>
@@ -165,29 +94,27 @@
     const ctx = canvas.getContext('2d');
     const particleContainer = document.getElementById('particle-configs');
     
-    // 物理布局常量（保持原样）
-    const SLIT_X = 260; 
-    const SOURCE_X = 40;
-    const START_Y = 120; 
-    const ACCEL_DIST = SLIT_X - SOURCE_X;
+    const SOURCE_LEFT = 60;   
+    const SOURCE_X = 100;     
+    const SLIT_X = 280;       
+    const START_Y = 150;      
+    const ACCEL_WIDTH = SOURCE_X - SOURCE_LEFT;
 
     let particleIdCounter = 0;
     let animationId = null;
     let particles = [];
+    const colorPalette = ["#00f2ff", "#36ffb3", "#ffee00", "#ff3672", "#369dff"];
 
-    // 科技感配色方案
-    const colorPalette = ["#4cc9f0", "#f72585", "#4361ee", "#7209b7", "#ffbe0b", "#06d6a0", "#f8961e"];
-
-    function createParticleUI(m = 20, q = 1) {
+    function createParticleUI(m = 15, q = 1) { // 默认值修改为 m=15
         particleIdCounter++;
         const color = colorPalette[(particleIdCounter - 1) % colorPalette.length];
         const div = document.createElement('div');
         div.className = 'particle-item';
         div.style.borderLeft = `4px solid ${color}`;
         div.innerHTML = `
-            <button class="remove-btn" onclick="this.parentElement.remove()">&times;</button>
-            <div class="input-group"><label>粒子质量 m :</label><input type="number" class="p-m" value="${m}"></div>
-            <div class="input-group"><label>电荷电量 q :</label><input type="number" class="p-q" value="${q}"></div>
+            <button class="remove-btn" onclick="this.parentElement.remove()">×</button>
+            <div class="input-group"><label>质量 (m):</label><input type="number" class="p-m" value="${m}"></div>
+            <div class="input-group"><label>电荷 (q):</label><input type="number" class="p-q" value="${q}"></div>
             <input type="hidden" class="p-color" value="${color}">
         `;
         particleContainer.appendChild(div);
@@ -202,7 +129,7 @@
         }
 
         reset() {
-            this.x = SOURCE_X;
+            this.x = SOURCE_LEFT + 2; 
             this.y = START_Y;
             this.vx = 0;
             this.vy = 0;
@@ -212,42 +139,43 @@
 
         update(dt, U, B) {
             if (this.state === 'DONE') return;
-
-            if (this.state === 'ACCEL') {
-                const targetV = Math.sqrt((2 * this.q * U) / this.m) * 12;
-                const acceleration = (targetV * targetV) / (2 * ACCEL_DIST);
-                this.vx += acceleration * dt;
-                this.x += this.vx * dt;
-                if (this.x >= SLIT_X) {
-                    this.state = 'MAGNETIC';
-                    this.x = SLIT_X;
+            const subSteps = 15; 
+            const subDt = dt / subSteps;
+            for(let i = 0; i < subSteps; i++) {
+                if (this.state === 'ACCEL') {
+                    const targetV = Math.sqrt((2 * this.q * U) / this.m) * 12;
+                    const acceleration = (targetV * targetV) / (2 * ACCEL_WIDTH);
+                    this.vx += acceleration * subDt;
+                    this.x += this.vx * subDt;
+                    if (this.x >= SOURCE_X) this.state = 'DRIFT';
+                } else if (this.state === 'DRIFT') {
+                    this.x += this.vx * subDt;
+                    if (this.x >= SLIT_X) {
+                        this.state = 'MAGNETIC';
+                        this.x = SLIT_X;
+                    }
+                } else if (this.state === 'MAGNETIC') {
+                    const v = Math.sqrt(this.vx**2 + this.vy**2);
+                    const r = (this.m * v) / (this.q * B) * 2.5; 
+                    const omega = v / r; 
+                    const curAngle = Math.atan2(this.vy, this.vx);
+                    const nextAngle = curAngle + omega * subDt;
+                    this.vx = v * Math.cos(nextAngle);
+                    this.vy = v * Math.sin(nextAngle);
+                    this.x += this.vx * subDt;
+                    this.y += this.vy * subDt;
+                    if (this.vx < 0 && this.x <= SLIT_X) {
+                        this.state = 'DONE';
+                        this.x = SLIT_X;
+                        break;
+                    }
                 }
-            } else if (this.state === 'MAGNETIC') {
-                const v = Math.sqrt(this.vx**2 + this.vy**2);
-                const r = (this.m * v) / (this.q * B) * 2.5; 
-                const omega = v / r; 
-                const curAngle = Math.atan2(this.vy, this.vx);
-                const nextAngle = curAngle + omega * dt;
-                this.vx = v * Math.cos(nextAngle);
-                this.vy = v * Math.sin(nextAngle);
-                this.x += this.vx * dt;
-                this.y += this.vy * dt;
-
-                if (this.x <= SLIT_X && this.path.length > 50) {
-                    this.state = 'DONE';
-                    this.x = SLIT_X; 
-                }
-                if (this.y > canvas.height || this.x > canvas.width || this.y < 0) {
-                    this.state = 'DONE';
-                }
+                if (i % 3 === 0) this.path.push({x: this.x, y: this.y});
             }
-            this.path.push({x: this.x, y: this.y});
+            if (this.y > canvas.height || this.x > canvas.width || this.y < 0) this.state = 'DONE';
         }
 
         draw() {
-            // 绘制轨迹（增加霓虹发光）
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = this.color;
             ctx.beginPath();
             ctx.strokeStyle = this.color;
             ctx.lineWidth = 3;
@@ -256,57 +184,62 @@
                 for (let p of this.path) ctx.lineTo(p.x, p.y);
             }
             ctx.stroke();
-            ctx.shadowBlur = 0; // 重置阴影以免影响其他绘制
-
-            // 绘制核心
             ctx.beginPath();
             ctx.arc(this.x, this.y, 6, 0, Math.PI * 2);
             ctx.fillStyle = "#fff";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.color;
             ctx.fill();
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            ctx.shadowBlur = 0;
         }
     }
 
     function drawStaticScene() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // 1. 离子源发射口 (增加金属质感)
-        ctx.strokeStyle = "#444";
+        const boxX = SOURCE_LEFT;
+        const boxY = START_Y - 40;
+        const boxW = SOURCE_X - SOURCE_LEFT;
+        const boxH = 80;
+        ctx.save();
+        ctx.fillStyle = "#111";
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+        ctx.strokeStyle = "#00f2ff";
         ctx.lineWidth = 2;
-        ctx.strokeRect(10, START_Y - 40, 60, 80);
-        ctx.fillStyle = "rgba(157, 78, 221, 0.1)";
-        ctx.fillRect(10, START_Y - 40, 60, 80);
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "#00f2ff";
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+        ctx.restore();
 
-        // 2. 磁场区分隔挡板
-        ctx.strokeStyle = "#333";
-        ctx.lineWidth = 5;
-        ctx.beginPath(); 
-        ctx.moveTo(SLIT_X, 0); ctx.lineTo(SLIT_X, START_Y - 12); 
-        ctx.stroke();
-        ctx.beginPath(); 
-        ctx.moveTo(SLIT_X, START_Y + 12); ctx.lineTo(SLIT_X, canvas.height); 
-        ctx.stroke();
+        ctx.save();
+        ctx.beginPath(); ctx.rect(boxX, boxY, boxW, boxH); ctx.clip();
+        ctx.strokeStyle = "rgba(0, 242, 255, 0.3)";
+        ctx.lineWidth = 1;
+        for (let y = boxY + 15; y < boxY + boxH; y += 25) {
+            ctx.beginPath(); ctx.moveTo(boxX, y); ctx.lineTo(boxX + boxW, y); ctx.stroke();
+            ctx.fillStyle = "rgba(0, 242, 255, 0.6)";
+            ctx.beginPath(); ctx.moveTo(boxX + 15, y - 3); ctx.lineTo(boxX + 22, y); ctx.lineTo(boxX + 15, y + 3); ctx.fill();
+        }
+        ctx.restore();
 
-        // 3. 磁场符号 ⊙ (改为幽蓝色)
-        ctx.fillStyle = "rgba(76, 201, 240, 0.4)";
-        ctx.font = "bold 20px Arial";
-        for (let x = SLIT_X + 50; x < canvas.width; x += 70) {
-            for (let y = 50; y < canvas.height; y += 70) {
-                ctx.fillText("⊙", x, y);
+        const magneticColor = "rgba(191, 54, 255, 0.3)"; 
+        for (let x = SLIT_X + 60; x < canvas.width; x += 80) {
+            for (let y = 60; y < canvas.height; y += 80) {
+                ctx.strokeStyle = magneticColor;
+                ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fillStyle = magneticColor; ctx.fill();
             }
         }
 
-        // 4. 感光板 (蓝色荧光线)
-        ctx.strokeStyle = "#4cc9f0";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#4cc9f0";
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 12;
+        ctx.beginPath(); ctx.moveTo(SLIT_X, 0); ctx.lineTo(SLIT_X, START_Y - 20); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(SLIT_X, START_Y + 20); ctx.lineTo(SLIT_X, canvas.height); ctx.stroke();
+
+        ctx.strokeStyle = "#bf36ff";
         ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(SLIT_X + 3, 0);
-        ctx.lineTo(SLIT_X + 3, canvas.height);
-        ctx.stroke();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#bf36ff";
+        ctx.beginPath(); ctx.moveTo(SLIT_X + 5, 0); ctx.lineTo(SLIT_X + 5, canvas.height); ctx.stroke();
         ctx.shadowBlur = 0;
     }
 
@@ -314,25 +247,21 @@
         const U = parseFloat(document.getElementById('U').value);
         const B = parseFloat(document.getElementById('B').value);
         particles = [];
-        const configs = document.querySelectorAll('.particle-item');
-        configs.forEach(item => {
+        document.querySelectorAll('.particle-item').forEach(item => {
             const m = parseFloat(item.querySelector('.p-m').value);
             const q = parseFloat(item.querySelector('.p-q').value);
             const color = item.querySelector('.p-color').value;
-            if (!isNaN(m) && !isNaN(q)) {
-                particles.push(new Particle(m, q, color));
-            }
+            if (!isNaN(m) && !isNaN(q)) particles.push(new Particle(m, q, color));
         });
-
         function runFrame() {
             drawStaticScene();
             let active = false;
             particles.forEach(p => {
-                p.update(0.18, U, B); 
+                p.update(0.25, U, B); 
                 p.draw();
                 if (p.state !== 'DONE') active = true;
             });
-            if (active) animationId = requestAnimationFrame(runFrame);
+            animationId = requestAnimationFrame(runFrame);
         }
         cancelAnimationFrame(animationId);
         runFrame();
@@ -346,11 +275,9 @@
         drawStaticScene();
     });
 
-    createParticleUI(20, 1);
-    createParticleUI(28, 1);
+    // 仅初始化一个质量为15、电荷为1的粒子
+    createParticleUI(15, 1);
     drawStaticScene();
 </script>
-
 </body>
-
 </html>
