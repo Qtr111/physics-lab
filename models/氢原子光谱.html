@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>氢原子光谱</title>
+    <style>
+        :root {
+            --bg-color: #05070a;
+            --panel-bg: rgba(13, 17, 23, 0.9);
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #8957e5;
+            --accent-red: #f85149;
+            --border-color: rgba(48, 54, 61, 0.8);
+            --text-main: #e6edf3;
+            --text-dim: #8b949e;
+        }
+
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            margin: 0; 
+            overflow: hidden; 
+        }
+
+        /* 顶部 UI 面板 */
+        .ui-panel { 
+            background: var(--panel-bg); 
+            backdrop-filter: blur(12px);
+            width: 100%; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            display: flex; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 40px; 
+            border-bottom: 2px solid var(--border-color); 
+            box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+            z-index: 10; 
+        }
+
+        .input-group { display: flex; align-items: center; gap: 15px; }
+        
+        label { font-size: 15px; color: var(--text-dim); font-weight: bold; letter-spacing: 1px; }
+
+        input { 
+            background: rgba(0,0,0,0.4); 
+            border: 2px solid var(--border-color); 
+            color: var(--accent-blue); 
+            padding: 10px; 
+            border-radius: 6px; 
+            width: 100px; 
+            font-size: 20px; 
+            outline: none; 
+            text-align: center;
+            font-weight: bold;
+        }
+
+        button { 
+            background: var(--accent-green); 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 15px; 
+            font-weight: bold; 
+            transition: all 0.2s;
+        }
+        button:hover { filter: brightness(1.2); transform: translateY(-2px); box-shadow: 0 0 20px rgba(63, 185, 80, 0.4); }
+        
+        .reset-btn { background: #484f58; margin-left: 10px; }
+
+        /* 自发辐射面板 */
+        .emission-panel { 
+            background: rgba(137, 87, 229, 0.1); 
+            padding: 12px 25px; 
+            border-radius: 8px; 
+            border: 2px solid rgba(137, 87, 229, 0.4); 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+        }
+        .emission-btn { background: var(--accent-purple); }
+
+        /* 左侧仪表盘 */
+        .dashboard { 
+            position: absolute; 
+            top: 130px; 
+            left: 30px; 
+            background: var(--panel-bg); 
+            padding: 25px; 
+            border-radius: 12px; 
+            border: 2px solid var(--border-color); 
+            min-width: 200px; 
+        }
+        .data-label { color: var(--text-dim); font-size: 13px; letter-spacing: 2px; margin-bottom: 8px; }
+        .data-value { color: var(--accent-blue); font-size: 36px; font-weight: bold; }
+        
+        /* 右侧参考表 */
+        .table-panel { 
+            position: absolute; 
+            top: 130px; 
+            right: 30px; 
+            background: var(--panel-bg); 
+            padding: 20px; 
+            border-radius: 12px; 
+            border: 2px solid var(--border-color); 
+            font-size: 14px;
+        }
+        table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+        td, th { padding: 10px 18px; text-align: center; border-bottom: 1px solid var(--border-color); }
+        th { color: var(--text-dim); font-weight: bold; background: rgba(255,255,255,0.05); }
+
+        /* 状态日志 */
+        .status-log { 
+            position: absolute; 
+            bottom: 40px; 
+            width: 100%; 
+            text-align: center; 
+            pointer-events: none; 
+            color: var(--text-dim); 
+            font-size: 22px; 
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .ion-msg { color: var(--accent-red) !important; text-shadow: 0 0 15px var(--accent-red); }
+        .success-msg { color: var(--accent-green) !important; text-shadow: 0 0 15px var(--accent-green); }
+
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; }
+    </style>
+</head>
+<body>
+
+<div class="ui-panel">
+    <div class="input-group">
+        <label>入射光能量 (eV)</label>
+        <input type="number" id="energyInput" step="0.01" value="10.20">
+        <button onclick="firePhoton()">发射光子</button>
+        <button class="reset-btn" onclick="resetAtom()">重置系统</button>
+    </div>
+
+    <div class="emission-panel" id="emissionArea">
+        <label>自发辐射控制</label>
+        <div id="emissionButtons" style="display: flex; gap: 8px;"></div>
+    </div>
+</div>
+
+<div class="dashboard">
+    <div class="data-label">当前量子态</div>
+    <div id="n-display" class="data-value">n = 1</div>
+    <div id="state-tag" style="color: var(--accent-green); font-size: 14px; margin-top: 8px; font-weight: bold;">基态</div>
+</div>
+
+<div class="table-panel">
+    <div style="font-weight: bold; color: var(--accent-blue); letter-spacing: 1px; text-align: center;">能级跃迁参考表</div>
+    <table>
+        <thead>
+            <tr><th>跃迁过程</th><th>能量 (eV)</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>n=1 → n=2</td><td>10.20</td></tr>
+            <tr><td>n=1 → n=3</td><td>12.09</td></tr>
+            <tr><td>n=1 → n=4</td><td>12.75</td></tr>
+            <tr><td>n=2 → n=3</td><td>1.89</td></tr>
+            <tr><td>n=2 → n=4</td><td>2.55</td></tr>
+            <tr><td>n=3 → n=4</td><td>0.66</td></tr>
+            <tr style="color: var(--accent-red); font-weight: bold;"><td>n=1 → 电离态</td><td>≥ 13.60</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="status-log" id="log-text">系统就绪，等待实验开始</div>
+
+<canvas id="atomCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('atomCanvas');
+const ctx = canvas.getContext('2d');
+const nDisplay = document.getElementById('n-display');
+const logText = document.getElementById('log-text');
+const stateTag = document.getElementById('state-tag');
+const emissionButtons = document.getElementById('emissionButtons');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const energyMap = {
+    "1-2": 10.20, "1-3": 12.09, "1-4": 12.75,
+    "2-3": 1.89,  "2-4": 2.55,  "3-4": 0.66
+};
+
+let currentN = 1; 
+let isIonized = false;
+let photons = []; 
+
+const getR = (n) => 100 + n * 65;
+
+function firePhoton() {
+    if (isIonized) {
+        logText.innerText = "原子已电离";
+        logText.className = "status-log ion-msg";
+        return;
+    }
+    const val = parseFloat(document.getElementById('energyInput').value);
+    if (isNaN(val)) return;
+    photons.push({
+        x: 0,
+        y: canvas.height / 2,
+        energy: val,
+        speed: 4,
+        active: true,
+        type: 'INCOMING'
+    });
+}
+
+function processAbsorption(inputE) {
+    if (inputE >= 13.6) {
+        isIonized = true;
+        currentN = 0;
+        updateUI();
+        logText.innerText = `检测到电离：入射能量 ${inputE.toFixed(2)} eV 超过电离能`;
+        logText.className = "status-log ion-msg";
+        return true;
+    }
+
+    let targetN = -1;
+    for (let n = currentN + 1; n <= 4; n++) {
+        const key = `${currentN}-${n}`;
+        if (energyMap[key] && Math.abs(energyMap[key] - inputE) < 0.001) {
+            targetN = n;
+            break;
+        }
+    }
+
+    if (targetN !== -1) {
+        currentN = targetN;
+        updateUI();
+        logText.innerText = `吸收成功：电子跃迁至 n=${currentN} 能级`;
+        logText.className = "status-log success-msg";
+        return true;
+    } else {
+        logText.innerText = `无相互作用：能量 ${inputE.toFixed(2)} eV 不符合跃迁条件`;
+        logText.className = "status-log";
+        return false;
+    }
+}
+
+function triggerEmission(targetN) {
+    const key = targetN < currentN ? `${targetN}-${currentN}` : `${currentN}-${targetN}`;
+    const eValue = energyMap[key];
+    currentN = targetN;
+    updateUI();
+    photons.push({
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        energy: eValue,
+        speed: 3,
+        active: false,
+        type: 'OUTGOING'
+    });
+    logText.innerText = `自发辐射：释放光子能量 ${eValue.toFixed(2)} eV`;
+    logText.className = "status-log success-msg";
+}
+
+function resetAtom() {
+    currentN = 1;
+    isIonized = false;
+    photons = [];
+    updateUI();
+    logText.innerText = "实验系统已重置";
+    logText.className = "status-log";
+}
+
+function updateUI() {
+    if (isIonized) {
+        nDisplay.innerText = "电离";
+        stateTag.innerText = "自由电子状态";
+        stateTag.style.color = "var(--accent-red)";
+        emissionButtons.innerHTML = '<span style="color: var(--accent-red); font-size:14px; font-weight:bold;">电子已脱离束缚</span>';
+    } else {
+        nDisplay.innerText = `n = ${currentN}`;
+        stateTag.innerText = currentN === 1 ? "基态" : `第 ${currentN-1} 激发态`;
+        stateTag.style.color = currentN === 1 ? "var(--accent-green)" : "var(--accent-purple)";
+        emissionButtons.innerHTML = "";
+        if (currentN === 1) {
+            emissionButtons.innerHTML = '<span style="font-size: 13px; color: #666;">等待激发...</span>';
+        } else {
+            for (let t = currentN - 1; t >= 1; t--) {
+                const btn = document.createElement('button');
+                btn.className = "emission-btn";
+                btn.innerText = `退激至 n=${t}`;
+                btn.onclick = () => triggerEmission(t);
+                emissionButtons.appendChild(btn);
+            }
+        }
+    }
+}
+
+function draw() {
+    ctx.fillStyle = '#05070a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    // 轨道绘制 (加粗)
+    for (let i = 1; i <= 4; i++) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, getR(i), 0, Math.PI * 2);
+        if (!isIonized && i === currentN) {
+            ctx.strokeStyle = 'rgba(88, 166, 255, 0.8)';
+            ctx.lineWidth = 6; // 大幅加粗活跃轨道
+            ctx.setLineDash([]);
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = 'rgba(88, 166, 255, 0.6)';
+        } else {
+            ctx.strokeStyle = 'rgba(48, 54, 61, 0.6)';
+            ctx.lineWidth = 3; // 普通轨道也加粗
+            ctx.setLineDash([15, 20]);
+            ctx.shadowBlur = 0;
+        }
+        ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
+
+    // 原子核
+    ctx.beginPath();
+    ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+    ctx.fillStyle = "#f85149";
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = "#f85149";
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 电子
+    if (!isIonized) {
+        const angle = Date.now() * 0.0008;
+        const ex = cx + Math.cos(angle) * getR(currentN);
+        const ey = cy + Math.sin(angle) * getR(currentN);
+        
+        ctx.beginPath();
+        ctx.arc(ex, ey, 9, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "#58a6ff";
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    // 光子绘制 (尺寸增大，能量数值增大)
+    for (let i = photons.length - 1; i >= 0; i--) {
+        let p = photons[i];
+        p.x += p.speed;
+        
+        if (p.type === 'INCOMING' && p.active && p.x > cx - 5) {
+            const absorbed = processAbsorption(p.energy);
+            if (absorbed) { photons.splice(i, 1); continue; }
+            else p.active = false;
+        }
+
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = p.type === 'INCOMING' ? "#fff" : "#fbbf24";
+        
+        ctx.beginPath();
+        ctx.strokeStyle = p.type === 'INCOMING' ? "#fff" : "#fbbf24";
+        ctx.lineWidth = 4; // 增加光子波线条厚度
+        for (let j = 0; j < 50; j++) { // 增加波形宽度
+            const wx = p.x - j;
+            const wy = p.y + Math.sin(wx * 0.2 + Date.now()*0.01) * 12; // 增加波动振幅
+            if (j === 0) ctx.moveTo(wx, wy);
+            else ctx.lineTo(wx, wy);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // 增大能量数值显示
+        ctx.fillStyle = p.type === 'INCOMING' ? "#fff" : "#fbbf24";
+        ctx.font = "bold 22px 'Arial'"; // 显著增大字体
+        ctx.fillText(`${p.energy.toFixed(2)} eV`, p.x - 30, p.y - 30);
+
+        if (p.x > canvas.width + 100) photons.splice(i, 1);
+    }
+    requestAnimationFrame(draw);
+}
+
+updateUI();
+draw();
+</script>
+</body>
+</html>
