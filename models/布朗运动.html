@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布朗运动 | AetherViz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #030712;
+            --panel-bg: rgba(15, 23, 42, 0.7);
+            --border-color: rgba(56, 189, 248, 0.3);
+            --primary-color: #06b6d4;
+            --accent-color: #f59e0b;
+            --text-main: #f0f9ff;
+            --text-muted: #7dd3fc;
+        }
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            font-family: 'Inter', system-ui, sans-serif;
+            overflow: hidden; 
+            margin: 0;
+        }
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+        .control-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #1e293b;
+            border-radius: 2px;
+            outline: none;
+        }
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--primary-color);
+            transition: all 0.2s;
+        }
+        .control-slider::-webkit-slider-thumb:hover {
+            background: #fff;
+            transform: scale(1.1);
+        }
+        .data-label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    </style>
+</head>
+<body>
+
+<div class="flex h-screen w-full p-3 gap-3">
+    <aside class="w-72 flex flex-col p-4 gap-4 glass-panel h-full">
+        <div class="flex items-center gap-2 mb-1">
+            <div class="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></div>
+            <h1 class="text-lg font-bold tracking-wider text-white">布朗运动<span class="text-cyan-400">.SIM</span></h1>
+        </div>
+
+        <div class="glass-panel p-4 space-y-5">
+            <div class="space-y-2">
+                <div class="flex justify-between items-baseline">
+                    <span class="data-label">环境温度</span>
+                    <span class="font-mono text-cyan-300 font-bold" id="val-t">300 K</span>
+                </div>
+                <input type="range" id="slider-t" min="10" max="1000" value="300" class="control-slider">
+            </div>
+
+            <div class="space-y-2">
+                <div class="flex justify-between items-baseline">
+                    <span class="data-label">颗粒尺寸</span>
+                    <span class="font-mono text-amber-300 font-bold" id="val-s">1.5 μm</span>
+                </div>
+                <input type="range" id="slider-s" min="0.5" max="5" step="0.1" value="1.5" class="control-slider">
+            </div>
+
+            <div class="space-y-2">
+                <div class="flex justify-between items-baseline">
+                    <span class="data-label">采样频率 </span>
+                    <span class="font-mono text-cyan-300 font-bold" id="val-dt">中</span>
+                </div>
+                <input type="range" id="slider-dt" min="1" max="20" step="1" value="5" class="control-slider">
+            </div>
+        </div>
+
+        <div class="mt-auto">
+            <button id="btn-reset" class="w-full text-sm bg-slate-800 hover:bg-slate-700 text-slate-100 py-2.5 rounded-lg font-medium border border-slate-700 transition">重置仿真粒子</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 relative glass-panel overflow-hidden" id="canvas-container">
+        <div class="absolute top-4 left-4 text-xs font-mono text-cyan-500 opacity-60">
+            [SYS_STATUS: RUNNING]<br>
+            [PARTICLE_COUNT: 1000]<br>
+            [SIM_SPEED: 0.25x]
+        </div>
+    </main>
+</div>
+
+<script>
+    // --- 配置与物理引擎变量 ---
+    // dt 现在表示每隔多少帧采样一个轨迹点，值越小越连贯
+    let params = { T: 300, S: 1.5, dt: 5 }; 
+    let bigV = new THREE.Vector3(0, 0, 0);
+    const boxSize = 40;
+    const SIM_SPEED_FACTOR = 0.25; // 
+    
+    // --- DOM 元素 ---
+    const container = document.getElementById('canvas-container');
+    const valT = document.getElementById('val-t');
+    const valS = document.getElementById('val-s');
+    const valDt = document.getElementById('val-dt');
+
+    // --- Three.js 初始化 ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x030712);
+    const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(40, 30, 50);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    // 灯光 - 霓虹氛围
+    scene.add(new THREE.AmbientLight(0x222222));
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(10, 10, 10);
+    scene.add(light);
+    const pointLight = new THREE.PointLight(0x06b6d4, 1, 100);
+    scene.add(pointLight);
+
+    // --- 场景物体 ---
+    // 容器边界 - 细线风格
+    const boxGeo = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+    const boxEdges = new THREE.EdgesGeometry(boxGeo);
+    const boxMat = new THREE.LineBasicMaterial({ color: 0x1e293b });
+    const wireframe = new THREE.LineSegments(boxEdges, boxMat);
+    scene.add(wireframe);
+
+    // 花粉颗粒 (黄金色, 带有放射光)
+    const bigGeo = new THREE.SphereGeometry(params.S, 32, 32);
+    const bigMat = new THREE.MeshPhongMaterial({ color: 0xf59e0b, emissive: 0x553300, shininess: 100 });
+    const bigParticle = new THREE.Mesh(bigGeo, bigMat);
+    scene.add(bigParticle);
+
+    // 液体分子 (霓虹蓝色粒子系统)
+    const particleCount = 1000;
+    const pGeo = new THREE.BufferGeometry();
+    const pPos = new Float32Array(particleCount * 3);
+    const pVel = [];
+    for(let i=0; i<particleCount; i++){
+        pPos[i*3] = (Math.random()-0.5) * boxSize;
+        pPos[i*3+1] = (Math.random()-0.5) * boxSize;
+        pPos[i*3+2] = (Math.random()-0.5) * boxSize;
+        pVel.push(new THREE.Vector3((Math.random()-0.5)*0.3, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.3));
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const pMat = new THREE.PointsMaterial({ color: 0x06b6d4, size: 0.15, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending });
+    const particles = new THREE.Points(pGeo, pMat);
+    scene.add(particles);
+
+    // 轨迹线 (荧光红)
+    const trailPoints = [];
+    const trailGeo = new THREE.BufferGeometry();
+    const trailMat = new THREE.LineBasicMaterial({ color: 0xff3366, transparent: true, opacity: 0.8, linewidth: 2 });
+    const trailLine = new THREE.Line(trailGeo, trailMat);
+    scene.add(trailLine);
+
+    // --- UI交互 ---
+    document.getElementById('slider-t').addEventListener('input', (e) => {
+        params.T = e.target.value;
+        valT.innerText = `${params.T} K`;
+    });
+    
+    document.getElementById('slider-s').addEventListener('input', (e) => {
+        params.S = parseFloat(e.target.value);
+        valS.innerText = `${params.S.toFixed(1)} μm`;
+        // 更新大球尺寸
+        bigParticle.geometry.dispose();
+        bigParticle.geometry = new THREE.SphereGeometry(params.S, 32, 32);
+    });
+
+    document.getElementById('slider-dt').addEventListener('input', (e) => {
+        params.dt = parseInt(e.target.value);
+        let label = "中";
+        if(params.dt <= 2) label = "极高 ";
+        else if(params.dt <= 6) label = "高";
+        else if(params.dt <= 12) label = "中";
+        else label = "低 ";
+        valDt.innerText = label;
+    });
+    
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        bigParticle.position.set(0,0,0);
+        bigV.set(0,0,0);
+        trailPoints.length = 0;
+    });
+
+    // --- 动画循环 ---
+    let frame = 0;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        // 1. 更新液体分子 - 速度受SIM_SPEED_FACTOR影响
+        const posAttr = pGeo.attributes.position;
+        const speedFactor = Math.sqrt(params.T) * 0.03 * SIM_SPEED_FACTOR;
+        for(let i=0; i<particleCount; i++){
+            let v = pVel[i];
+            let x = posAttr.getX(i) + v.x * speedFactor;
+            let y = posAttr.getY(i) + v.y * speedFactor;
+            let z = posAttr.getZ(i) + v.z * speedFactor;
+            
+            const limit = boxSize / 2;
+            if(x>limit || x<-limit) { v.x*=-1; x = Math.max(-limit, Math.min(limit, x)); }
+            if(y>limit || y<-limit) { v.y*=-1; y = Math.max(-limit, Math.min(limit, y)); }
+            if(z>limit || z<-limit) { v.z*=-1; z = Math.max(-limit, Math.min(limit, z)); }
+            
+            posAttr.setXYZ(i, x, y, z);
+        }
+        posAttr.needsUpdate = true;
+
+        // 2. 更新花粉颗粒 (物理连续动画)
+        let force = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5)
+            .normalize().multiplyScalar(Math.sqrt(params.T) * 0.2 * SIM_SPEED_FACTOR);
+        
+        let mass = Math.pow(params.S, 3);
+        let accel = force.divideScalar(mass);
+        
+        bigV.add(accel);
+        bigV.multiplyScalar(0.95); // 粘性阻力
+        // 实际粒子位置每一帧都在更新，保证动画是连续的
+        bigParticle.position.add(bigV.clone().multiplyScalar(SIM_SPEED_FACTOR));
+        pointLight.position.copy(bigParticle.position); // 光随粒子移动
+
+        // 大颗粒边界碰撞
+        const pLimit = boxSize / 2 - params.S;
+        if(Math.abs(bigParticle.position.x)>pLimit) { bigV.x*=-0.5; bigParticle.position.x = Math.sign(bigParticle.position.x)*pLimit; }
+        if(Math.abs(bigParticle.position.y)>pLimit) { bigV.y*=-0.5; bigParticle.position.y = Math.sign(bigParticle.position.y)*pLimit; }
+        if(Math.abs(bigParticle.position.z)>pLimit) { bigV.z*=-0.5; bigParticle.position.z = Math.sign(bigParticle.position.z)*pLimit; }
+
+        // 3. 更新轨迹 - 根据params.dt控制采样频率
+        if(frame % params.dt === 0) { 
+            trailPoints.push(bigParticle.position.clone());
+            // 限制轨迹点数量以保证性能
+            if(trailPoints.length > 800) trailPoints.shift();
+            trailGeo.setFromPoints(trailPoints);
+        }
+        
+        frame++;
+        renderer.render(scene, camera);
+    }
+
+    // 响应调整
+    window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    animate();
+</script>
+</body>
+</html>
