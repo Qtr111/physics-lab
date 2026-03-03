@@ -2,14 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>回旋加速器</title>
+    <title>回旋加速器 · 末次电场瞬间达最大速度</title>
     <style>
         :root {
             --d-box-color: rgba(0, 162, 255, 0.15);
             --d-edge-color: #00f3ff;
-            --field-color: #ffcc00; /* 电场与电压数值统一用黄色 */
+            --field-color: #ffcc00;
             --particle-color: #ffffff;
-            --trail-color: #ff0077; /* 轨迹用粉色区分 */
+            --trail-color: #ff0077;
             --bg-color: #020508;
         }
 
@@ -21,7 +21,6 @@
             margin: 0; padding: 20px;
         }
 
-        /* 顶部参数大屏 */
         .header-stats {
             display: flex; gap: 40px; margin-bottom: 20px;
             background: rgba(255,255,255,0.03); padding: 15px 40px;
@@ -55,7 +54,6 @@
 
         .control-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 40px; align-items: center; }
         
-        /* 自定义滑块 */
         input[type=range] { -webkit-appearance: none; background: #222; height: 6px; border-radius: 3px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: var(--d-edge-color); cursor: pointer; box-shadow: 0 0 10px var(--d-edge-color); }
 
@@ -67,6 +65,11 @@
         button:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--d-edge-color); }
         
         #progressSlider { grid-column: span 3; margin-top: 10px; }
+        
+        .info-note {
+            color: #ffaa00; font-size: 0.9em; text-align: center; margin-top: 8px;
+            border-top: 1px solid #333; padding-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -107,6 +110,7 @@
             </div>
             <input type="range" id="progressSlider" min="0" max="0" value="0">
         </div>
+        <div class="info-note">※v_max = qBR/m</div>
     </div>
 
 <script>
@@ -117,56 +121,143 @@
     let frames = []; let currentIdx = 0; let isPaused = false;
     let U = 100; let B = 0.30;
 
+    // 理论最大速度 (由磁场和D盒半径决定)
+    function getTheoryMaxV() {
+        return (q * B * dRadius) / m;
+    }
+
     function calculatePhysics() {
         frames = [];
-        let p = { x: -gapWidth/2, y: 0, vx: 6.0, vy: 0 }; 
-        let active = true; let currentEDir = 1; let lastInGap = true;
-        const finalV = (q * B * dRadius) / m;
-        const finalEk = 0.5 * m * finalV**2;
+        // 起始位置：中心下方，水平向右 (保证同心半圆)
+        let p = { x: 0, y: -30, vx: 6.0, vy: 0 };
+        
+        let active = true; 
+        let currentEDir = 1;      // 初始电场方向向右
+        let lastInGap = true;      // 起始在间隙
+        
+        // 理论最大速度
+        const V_THEORY_MAX = getTheoryMaxV();
+        const EK_THEORY_MAX = 0.5 * m * V_THEORY_MAX ** 2;
 
-        while(active) {
-            let v = Math.sqrt(p.vx**2 + p.vy**2);
-            let r = Math.sqrt(p.x**2 + p.y**2);
-            let inGap = Math.abs(p.x) < gapWidth/2;
+        // 标记是否已经记录最后一次加速瞬间
+        let finalAccelRecorded = false;
 
-            if (inGap && !lastInGap) currentEDir = (p.vx > 0) ? 1 : -1;
+        while (active) {
+            let v = Math.sqrt(p.vx ** 2 + p.vy ** 2);
+            let r = Math.sqrt(p.x ** 2 + p.y ** 2);
+            let inGap = Math.abs(p.x) < gapWidth / 2;
 
-            if (r >= dRadius) {
-                frames.push({
-                    x: p.x * (dRadius/r), y: p.y * (dRadius/r), 
-                    v: Math.round(finalV), ek: Math.round(finalEk), 
-                    inGap: inGap, eDir: currentEDir
-                });
-                active = false; break;
+            // 电场方向切换：进入间隙时根据速度方向确定加速方向
+            if (inGap && !lastInGap) {
+                if (p.vx > 0) {
+                    currentEDir = 1;   // 向右加速
+                } else {
+                    currentEDir = -1;  // 向左加速
+                }
             }
 
+            // 记录当前帧 (加速前状态)
             frames.push({
-                x: p.x, y: p.y, v: Math.round(v), ek: Math.round(0.5 * m * v**2), 
-                inGap: inGap, eDir: currentEDir
+                x: p.x, y: p.y, 
+                v: Math.round(v), 
+                ek: Math.round(0.5 * m * v ** 2),
+                inGap: inGap, 
+                eDir: currentEDir
             });
 
+            // 物理演化
             if (inGap) {
+                // 间隙内：电场加速
                 let a = (q * U / gapWidth) / m;
-                p.vx += a * currentEDir * dt; 
-                p.x += p.vx * dt; p.y += p.vy * dt;
+                p.vx += a * currentEDir * dt;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
                 lastInGap = true;
+                
+                // 加速后检查：如果加速后粒子将离开间隙 (|p.x| 即将超过 gapWidth/2) 
+                // 并且半径已经达到或超过边界，则这是最后一次加速瞬间
+                let willLeaveGap = Math.abs(p.x) >= gapWidth/2 - 1e-6; // 即将离开间隙
+                let newR = Math.sqrt(p.x**2 + p.y**2);
+                
+                if (newR >= dRadius && !finalAccelRecorded) {
+                    // 这是最后一次加速的瞬间，记录加速后的状态，但速度强制设为理论最大值
+                    frames.push({
+                        x: p.x, y: p.y, 
+                        v: Math.round(V_THEORY_MAX), 
+                        ek: Math.round(EK_THEORY_MAX),
+                        inGap: true, 
+                        eDir: currentEDir
+                    });
+                    finalAccelRecorded = true;
+                    active = false;
+                    break;
+                }
             } else {
+                // 磁场内：偏转 (速率不变)
                 lastInGap = false;
-                let accMag = (q * v * B) / m;
-                let angle = Math.atan2(p.vy, p.vx);
-                p.vx += accMag * Math.sin(angle) * dt;
-                p.vy += -accMag * Math.cos(angle) * dt;
-                let newV = Math.sqrt(p.vx**2 + p.vy**2);
-                p.vx *= (v / newV); p.vy *= (v / newV);
-                p.x += p.vx * dt; p.y += p.vy * dt;
+                let deltaTheta = (q * B / m) * dt;   // 逆时针旋转
+                let newVx = p.vx * Math.cos(deltaTheta) - p.vy * Math.sin(deltaTheta);
+                let newVy = p.vx * Math.sin(deltaTheta) + p.vy * Math.cos(deltaTheta);
+                let newV = Math.sqrt(newVx**2 + newVy**2);
+                // 保持速率恒定
+                if (newV > 1e-9) {
+                    p.vx = newVx * (v / newV);
+                    p.vy = newVy * (v / newV);
+                } else {
+                    p.vx = newVx;
+                    p.vy = newVy;
+                }
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+
+                // 如果磁场内超出边界（理论上不应发生，因为应该在加速瞬间就终止了）
+                // 但为了防止意外，加一个保底
+                let rAfter = Math.sqrt(p.x**2 + p.y**2);
+                if (rAfter >= dRadius && !finalAccelRecorded) {
+                    // 这种情况很少见，但如果有，说明加速后没触发，这里补一个记录
+                    frames.push({
+                        x: p.x, y: p.y, 
+                        v: Math.round(V_THEORY_MAX), 
+                        ek: Math.round(EK_THEORY_MAX),
+                        inGap: false, 
+                        eDir: currentEDir
+                    });
+                    finalAccelRecorded = true;
+                    active = false;
+                    break;
+                }
             }
-            if (frames.length > 50000) active = false;
+
+            // 防止无限循环
+            if (frames.length > 100000) active = false;
         }
+
+        // 确保最后一帧是最大速度（如果还没设置的话）
+        if (!finalAccelRecorded && frames.length > 0) {
+            // 这种情况几乎不会发生，但为了保险
+            frames[frames.length-1].v = Math.round(V_THEORY_MAX);
+            frames[frames.length-1].ek = Math.round(EK_THEORY_MAX);
+        }
+
+        // 额外处理：确保最后一次加速瞬间及其后面的所有帧（如果有）都是理论最大值
+        // 查找最后一个加速帧（inGap为true且之后可能没有帧或之后是边界）
+        for (let i = frames.length - 1; i >= 0; i--) {
+            if (frames[i].inGap === true) {
+                // 从这一帧开始到最后，全部设为理论最大值
+                for (let j = i; j < frames.length; j++) {
+                    frames[j].v = Math.round(V_THEORY_MAX);
+                    frames[j].ek = Math.round(EK_THEORY_MAX);
+                }
+                break;
+            }
+        }
+
+        // 更新进度条
         document.getElementById('progressSlider').max = frames.length - 1;
         currentIdx = 0;
     }
 
-    // 修改3：增加蓝色x符号表示磁场方向
+    // 绘制D盒 (与之前相同)
     function drawDees() {
         const cx = canvas.width/2; const cy = canvas.height/2;
         ctx.save();
@@ -188,15 +279,13 @@
             }
             ctx.closePath();
             
-            // 填充D盒颜色
             ctx.fillStyle = 'rgba(0, 80, 150, 0.2)';
             ctx.fill();
             ctx.strokeStyle = '#00f3ff';
             ctx.stroke();
 
-            // 绘制x符号 (磁场方向)
             ctx.clip(); 
-            ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)'; // 蓝色x
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
             ctx.lineWidth = 1;
             const spacing = 40;
             for(let x = cx - dRadius; x <= cx + dRadius; x += spacing) {
@@ -215,7 +304,7 @@
         ctx.restore();
     }
 
-    // 绘制高亮电场箭头
+    // 绘制电场箭头
     function drawElectricField(dir) {
         ctx.save();
         ctx.fillStyle = '#ffcc00';
@@ -226,9 +315,7 @@
         
         for (let y = -240; y <= 240; y += 60) {
             const curY = canvas.height/2 + y;
-            // 绘制箭杆
             ctx.fillRect(startX, curY - 2, (endX - startX), 4);
-            // 绘制箭头头部
             ctx.beginPath();
             ctx.moveTo(endX, curY);
             ctx.lineTo(endX - dir*15, curY - 10);
@@ -244,13 +331,10 @@
         const cx = canvas.width/2; const cy = canvas.height/2;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. 绘制D形盒实体 (含磁场符号)
         drawDees();
-
-        // 2. 绘制电场箭头
         drawElectricField(f.eDir);
 
-        // 3. 绘制粒子轨迹
+        // 绘制轨迹
         ctx.save();
         ctx.beginPath(); 
         ctx.strokeStyle = '#ff0077'; 
@@ -262,12 +346,12 @@
         ctx.stroke();
         ctx.restore();
 
-        // 4. 绘制粒子核心
+        // 粒子
         ctx.fillStyle = '#fff'; ctx.shadowBlur = 20; ctx.shadowColor = '#fff';
         ctx.beginPath(); ctx.arc(cx + f.x, cy + f.y, 8, 0, Math.PI*2); ctx.fill();
         ctx.shadowBlur = 0;
 
-        // 5. 更新数据
+        // 更新显示
         document.getElementById('vVal').innerText = f.v;
         document.getElementById('ekVal').innerText = f.ek;
         document.getElementById('progressSlider').value = currentIdx;
@@ -279,14 +363,15 @@
         requestAnimationFrame(render);
     }
 
-    // 控制逻辑
+    // 事件绑定
     document.getElementById('pauseBtn').onclick = (e) => { 
         isPaused = !isPaused; e.target.innerText = isPaused ? "继续" : "暂停"; 
     };
     document.getElementById('resetBtn').onclick = () => {
         U = parseFloat(document.getElementById('uRange').value);
         B = parseFloat(document.getElementById('bRange').value);
-        calculatePhysics(); isPaused = false;
+        calculatePhysics(); 
+        isPaused = false;
         document.getElementById('pauseBtn').innerText = "暂停";
     };
     document.getElementById('uRange').oninput = (e) => {
@@ -296,10 +381,14 @@
         document.getElementById('bShowLarge').innerText = parseFloat(e.target.value).toFixed(2);
     };
     document.getElementById('progressSlider').oninput = (e) => { 
-        isPaused = true; currentIdx = parseInt(e.target.value); 
+        isPaused = true; 
+        currentIdx = parseInt(e.target.value); 
+        document.getElementById('pauseBtn').innerText = "继续";
     };
 
-    calculatePhysics(); render();
+    // 初始化
+    calculatePhysics(); 
+    render();
 </script>
 </body>
 </html>
