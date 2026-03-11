@@ -2,144 +2,231 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>带电粒子在匀强磁场中的运动 </title>
+    <title>带电粒子在匀强磁场中的运动 · 浅色界面</title>
     <style>
-        :root { 
-            --accent: #3b82f6; 
-            --neon: #60a5fa;
-            --bg: #0f172a; 
-            --panel: rgba(30, 41, 59, 0.7); 
-            --border: rgba(148, 163, 184, 0.2);
+        /* ----- 浅色主题 · 重定义所有颜色 (仅修改UI风格，物理规律不变) ----- */
+        :root {
+            --accent: #2563eb;           /* 主色调：深蓝，确保在浅色背景上清晰 */
+            --neon: #3b82f6;              /* 辅助蓝 */
+            --bg: #f5f7fa;                /* 整体背景浅灰 */
+            --panel: rgba(255, 255, 255, 0.85); /* 半透明白色面板 */
+            --border: rgba(0, 0, 0, 0.1);  /* 浅色边框 */
+            --text-primary: #0f172a;       /* 深灰文字 */
+            --text-secondary: #334155;
+            --canvas-bg: #ffffff;          /* 画布纯白背景 */
+            --grid-color: rgba(0, 0, 0, 0.08);
+            --field-fill: rgba(37, 99, 235, 0.08);  /* 磁场区域浅蓝填充 */
+            --field-stroke: rgba(37, 99, 235, 0.5); /* 磁场边界 */
+            --cross-color: rgba(0, 0, 0, 0.25);      /* 磁场×符号 */
+            --arrow-color: #1e40af;         /* 深蓝箭头 */
+            --source-color: #2563eb;         /* 发射源 */
+            --particle-dot: #1e293b;         /* 粒子实时位置圆点 */
         }
-        body { 
-            font-family: 'Segoe UI', system-ui, sans-serif; 
-            background: var(--bg); 
-            background-image: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            padding: 0; 
-            color: #f1f5f9; 
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            /* 移除深色径向渐变，改为非常淡的线性渐变，保持清爽 */
+            background: linear-gradient(145deg, #f0f2f5 0%, #fafcff 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            color: var(--text-primary);
             margin: 0;
             height: 100vh;
             overflow: hidden;
         }
-        .main-wrapper { 
-            display: flex; 
-            gap: 25px; 
-            background: var(--panel); 
-            backdrop-filter: blur(12px);
-            padding: 24px; 
-            border-radius: 28px; 
+
+        .main-wrapper {
+            display: flex;
+            gap: 25px;
+            background: var(--panel);
+            backdrop-filter: blur(8px);      /* 保留一点毛玻璃，但效果变弱 */
+            padding: 24px;
+            border-radius: 28px;
             border: 1px solid var(--border);
-            box-shadow: 0 0 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255,255,255,0.5) inset;
             max-height: 98vh;
         }
+
         /* 左侧控制面板 */
-        .sidebar { 
-            width: 280px; 
-            display: flex; 
-            flex-direction: column; 
+        .sidebar {
+            width: 280px;
+            display: flex;
+            flex-direction: column;
             gap: 16px;
         }
-        h2 { 
-            margin: 0; 
-            font-size: 1.2rem; 
+
+        h2 {
+            margin: 0;
+            font-size: 1.2rem;
             letter-spacing: 1px;
             text-transform: uppercase;
             border-left: 4px solid var(--accent);
             padding-left: 12px;
+            color: var(--text-secondary);
         }
-        .control-group { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
-            background: rgba(15, 23, 42, 0.5);
+        #modeTitle {
+            color: var(--accent);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.5); /* 半透明白 */
             padding: 14px;
             border-radius: 16px;
             border: 1px solid var(--border);
+            backdrop-filter: blur(4px);
         }
-        label { font-weight: 600; font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; text-transform: uppercase; }
-        
+
+        label {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            text-transform: uppercase;
+        }
+
         select {
             padding: 10px;
             border-radius: 8px;
             border: 1px solid var(--border);
-            background: #1e293b;
+            background: white;
             font-size: 14px;
-            color: #f1f5f9;
+            color: var(--text-primary);
             cursor: pointer;
             outline: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        select:hover {
+            border-color: var(--accent);
         }
 
-        /* 科技感滑动条 */
-        input[type="range"] { 
-            width: 100%; cursor: pointer; height: 4px; border-radius: 2px; appearance: none; background: #334155; 
+        /* 浅色滑动条 */
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 4px;
+            border-radius: 2px;
+            appearance: none;
+            background: #d1d5db;
         }
-        input[type="range"]::-webkit-slider-thumb { 
-            appearance: none; width: 18px; height: 18px; background: var(--accent); border-radius: 4px; 
-            cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 10px var(--accent); 
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
         }
-        
-        .btn-group { display: flex; flex-direction: column; gap: 10px; }
-        button { 
-            width: 100%; padding: 12px; border: none; border-radius: 12px; 
-            font-weight: bold; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            font-size: 14px; 
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
-        #fireBtn { 
-            background: var(--accent); 
-            color: white; 
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-        }
-        #fireBtn:hover { 
-            background: #2563eb; 
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
-        }
-        #fireBtn:active { transform: translateY(0); }
 
-        #clearBtn { background: transparent; color: #94a3b8; border: 1px solid var(--border); }
-        #clearBtn:hover { background: rgba(226, 232, 240, 0.1); color: #f1f5f9; }
-        
-        /* 预设按钮 */
-        .preset-btn { 
-            background: rgba(59, 130, 246, 0.1); 
-            color: var(--neon); 
-            border: 1px solid rgba(59, 130, 246, 0.3); 
-            padding: 8px; 
-            font-size: 12px; 
+        #fireBtn {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3);
+        }
+        #fireBtn:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 18px rgba(37, 99, 235, 0.4);
+        }
+        #fireBtn:active {
+            transform: translateY(0);
+        }
+
+        #clearBtn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        #clearBtn:hover {
+            background: rgba(0, 0, 0, 0.02);
+            color: var(--text-primary);
+            border-color: #9ca3af;
+        }
+
+        /* 预设按钮 - 浅色风格 */
+        .preset-btn {
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--accent);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            padding: 8px;
+            font-size: 12px;
             text-align: left;
             position: relative;
             overflow: hidden;
+            border-radius: 10px;
         }
         .preset-btn::after {
-            content: '>'; position: absolute; right: 10px; opacity: 0.5;
+            content: '→';
+            position: absolute;
+            right: 10px;
+            opacity: 0.5;
+            color: var(--accent);
         }
-        .preset-btn:hover { 
-            background: rgba(59, 130, 246, 0.2); 
+        .preset-btn:hover {
+            background: rgba(37, 99, 235, 0.15);
             border-color: var(--accent);
-            padding-left: 12px;
+            padding-left: 14px;
         }
-        
-        .val-display { color: var(--neon); font-family: 'Consolas', monospace; text-shadow: 0 0 8px rgba(96, 165, 250, 0.5); }
-        
+
+        .val-display {
+            color: var(--accent);
+            font-family: 'Consolas', monospace;
+            font-weight: 600;
+            background: rgba(37, 99, 235, 0.1);
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
         /* 画布容器装饰 */
-        .canvas-container { position: relative; }
-        .canvas-container::before {
-            content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px;
-            background: linear-gradient(45deg, var(--accent), transparent, var(--accent));
-            border-radius: 18px; z-index: -1; opacity: 0.3;
+        .canvas-container {
+            position: relative;
         }
-        
-        canvas { 
-            background: #020617; 
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px; 
-            display: block; 
+        .canvas-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--accent), transparent, #a5b4fc);
+            border-radius: 18px;
+            z-index: -1;
+            opacity: 0.2;
+        }
+
+        canvas {
+            background: var(--canvas-bg);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            display: block;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -147,12 +234,12 @@
 
 <div class="main-wrapper">
     <div class="sidebar">
-        <h2>控制面板<br><span style="color:var(--accent);" id="modeTitle">SYSTEM ACTIVE</span></h2>
+        <h2>控制面板<br><span style="color:var(--accent);" id="modeTitle">LIGHT MODE</span></h2>
         
         <div class="control-group">
             <label>磁场形状</label>
             <select id="shapeSelect">
-                <option value="circle">圆形磁场 </option>
+                <option value="circle">圆形磁场</option>
                 <option value="rect">矩形磁场</option>
             </select>
         </div>
@@ -218,7 +305,7 @@
             { label: "60° 偏转", v: 39, a: 0 }
         ],
         rect: [
-            { label: "右边界相切 ", v: 18, a: -90 }
+            { label: "右边界相切", v: 18, a: -90 }
         ]
     };
 
@@ -245,7 +332,8 @@
             this.v = v;
             this.mode = mode;
             this.angleRad = -angleDeg * Math.PI / 180;
-            this.color = `hsl(${Math.random() * 360}, 100%, 65%)`; // 更亮的发光色
+            // 浅色主题下粒子颜色使用较深、高饱和的颜色，确保在白色背景上清晰
+            this.color = `hsl(${Math.random() * 360}, 80%, 30%)`; 
             this.R = (Math.pow(this.v, 2) / 3.0) + (this.v * 5); 
             this.centerX = env.originX + this.R * Math.sin(this.angleRad);
             this.centerY = env.originY - this.R * Math.cos(this.angleRad);
@@ -287,20 +375,25 @@
         }
 
         draw() {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = this.color;
+            // 浅色背景下取消发光阴影，使用清晰纯色线条
+            ctx.shadowBlur = 0;
             ctx.beginPath();
             ctx.strokeStyle = this.color;
             ctx.lineWidth = 3;
             ctx.moveTo(this.path[0].x, this.path[0].y);
             for (let i = 1; i < this.path.length; i++) ctx.lineTo(this.path[i].x, this.path[i].y);
             ctx.stroke();
-            ctx.shadowBlur = 0; // 重置阴影，防止后续绘制模糊
             
             if (this.alive) {
                 const last = this.path[this.path.length-1];
-                ctx.beginPath(); ctx.arc(last.x, last.y, 4, 0, Math.PI*2);
-                ctx.fillStyle = "#fff"; ctx.fill();
+                ctx.beginPath(); 
+                ctx.arc(last.x, last.y, 4, 0, Math.PI*2);
+                ctx.fillStyle = "#1e293b";   // 深色圆点，突出当前位置
+                ctx.fill();
+                // 加一个白边增强对比
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
             }
         }
     }
@@ -308,12 +401,19 @@
     function drawArrow(ctx, fromx, fromy, tox, toy) {
         const headlen = 12;
         const angle = Math.atan2(toy - fromy, tox - fromx);
-        ctx.beginPath(); ctx.moveTo(fromx, fromy); ctx.lineTo(tox, toy);
-        ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2; ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(tox, toy);
+        ctx.beginPath(); 
+        ctx.moveTo(fromx, fromy); 
+        ctx.lineTo(tox, toy);
+        ctx.strokeStyle = "#1e40af";   // 深蓝箭头
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.beginPath(); 
+        ctx.moveTo(tox, toy);
         ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
         ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
-        ctx.closePath(); ctx.fillStyle = "#38bdf8"; ctx.fill();
+        ctx.closePath(); 
+        ctx.fillStyle = "#1e40af"; 
+        ctx.fill();
     }
 
     function fireParticle() {
@@ -323,8 +423,8 @@
     function mainLoop() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // 绘制背景网格
-        ctx.strokeStyle = "rgba(59, 130, 246, 0.05)";
+        // 绘制浅色网格
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.06)";
         ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=40) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
@@ -335,38 +435,60 @@
 
         ctx.save();
         if (env.mode === 'circle') {
-            ctx.beginPath(); ctx.arc(env.fieldCenterX, env.fieldCenterY, env.fieldR, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(30, 41, 59, 0.5)"; ctx.fill(); 
-            ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
-            ctx.setLineDash([10, 5]); ctx.stroke(); ctx.clip(); 
+            ctx.beginPath(); 
+            ctx.arc(env.fieldCenterX, env.fieldCenterY, env.fieldR, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(37, 99, 235, 0.08)";  // 非常浅的蓝色填充
+            ctx.fill(); 
+            ctx.strokeStyle = "rgba(37, 99, 235, 0.5)";
+            ctx.setLineDash([10, 5]); 
+            ctx.stroke(); 
+            ctx.clip(); 
         } else {
             const rectX = env.originX, rectY = env.fieldCenterY - env.rectH/2;
-            ctx.fillStyle = "rgba(30, 41, 59, 0.5)";
+            ctx.fillStyle = "rgba(37, 99, 235, 0.08)";
             ctx.fillRect(rectX, rectY, env.rectW, env.rectH);
-            ctx.strokeStyle = "rgba(56, 189, 248, 0.4)"; ctx.setLineDash([10, 5]);
+            ctx.strokeStyle = "rgba(37, 99, 235, 0.5)"; 
+            ctx.setLineDash([10, 5]);
             ctx.strokeRect(rectX, rectY, env.rectW, env.rectH);
-            ctx.beginPath(); ctx.rect(rectX, rectY, env.rectW, env.rectH); ctx.clip();
+            ctx.beginPath(); 
+            ctx.rect(rectX, rectY, env.rectW, env.rectH); 
+            ctx.clip();
         }
-        // 磁场符号
-        ctx.fillStyle = "rgba(148, 163, 184, 0.15)"; ctx.font = "14px monospace";
-        for(let i=0; i<40; i++) for(let j=0; j<40; j++) ctx.fillText("×", 15 + i*30, 25 + j*30);
+        // 磁场符号 “×” 使用浅灰黑色，清晰且不刺眼
+        ctx.fillStyle = "rgba(0, 0, 0, 0.25)"; 
+        ctx.font = "16px monospace";
+        for(let i=0; i<40; i++) {
+            for(let j=0; j<40; j++) {
+                ctx.fillText("×", 15 + i*30, 25 + j*30);
+            }
+        }
         ctx.restore();
 
+        // 绘制速度箭头
         const v = parseFloat(vInput.value), ang = -parseFloat(aInput.value) * Math.PI / 180;
         const arrowLen = 40 + (v / 60) * 80;
         drawArrow(ctx, env.originX, env.originY, env.originX + arrowLen * Math.cos(ang), env.originY + arrowLen * Math.sin(ang));
         
+        // 更新并绘制所有粒子
         particles.forEach(p => { p.update(); p.draw(); });
         
-        // 发射源高亮
-        ctx.beginPath(); ctx.arc(env.originX, env.originY, 6, 0, Math.PI*2);
-        ctx.fillStyle = "#3b82f6"; ctx.shadowBlur = 15; ctx.shadowColor = "#3b82f6";
-        ctx.fill(); ctx.shadowBlur = 0;
+        // 发射源高亮 (深蓝色，带轻微深色阴影)
+        ctx.beginPath(); 
+        ctx.arc(env.originX, env.originY, 7, 0, Math.PI*2);
+        ctx.fillStyle = "#2563eb";
+        ctx.shadowBlur = 10; 
+        ctx.shadowColor = "rgba(37, 99, 235, 0.4)";
+        ctx.fill();
+        ctx.shadowBlur = 0; // 重置阴影
         
         requestAnimationFrame(mainLoop);
     }
 
-    shapeSelect.onchange = (e) => { env.mode = e.target.value; particles = []; updatePresets(); };
+    shapeSelect.onchange = (e) => { 
+        env.mode = e.target.value; 
+        particles = []; 
+        updatePresets(); 
+    };
     document.getElementById('fireBtn').onclick = fireParticle;
     document.getElementById('clearBtn').onclick = () => { particles = []; };
     vInput.oninput = () => { document.getElementById('vLabel').textContent = vInput.value; };
