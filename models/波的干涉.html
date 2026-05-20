@@ -1320,7 +1320,7 @@
         // 开始动画循环
         animate();
     </script>
-    <!-- ========== 物理实验智能助手 ========== -->
+  <!-- ========== 物理实验智能助手 ========== -->
 <style>
     #ai-assistant-btn {
         position: fixed;
@@ -1406,6 +1406,7 @@
 <script>
     let chatBox = document.getElementById('ai-chat-box');
     let chatOpened = false;
+    const currentExperiment = "波的干涉实验"; // 改这个就行！
     
     function toggleAIChat() {
         chatBox.style.display = chatBox.style.display === 'block' ? 'none' : 'block';
@@ -1413,14 +1414,13 @@
         // 第一次打开时，自动告诉智能体当前实验
         if (chatBox.style.display === 'block' && !chatOpened) {
             setTimeout(function() {
-                // 获取 iframe
                 let iframe = document.getElementById('ai-chat-iframe');
-                // 告诉智能体：用户现在在看波的干涉实验
+                // 给智能体发消息
                 iframe.contentWindow.postMessage({
-                    type: 'message',
-                    content: '用户当前正在查看的实验是：波的干涉实验。请结合这个实验回答。'
+                    role: 'user',
+                    content: '【系统提示】用户当前正在查看的实验是：' + currentExperiment + '。所有回答请结合这个实验，不要搞错实验名称！'
                 }, '*');
-            }, 1000);
+            }, 1500);
             chatOpened = true;
         }
     }
