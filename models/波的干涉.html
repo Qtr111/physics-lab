@@ -1320,7 +1320,7 @@
         // 开始动画循环
         animate();
     </script>
-  <!-- ========== 物理实验智能助手 ========== -->
+<!-- ========== 物理实验智能助手 ========== -->
 <style>
     #ai-assistant-btn {
         position: fixed;
@@ -1400,29 +1400,17 @@
         <span id="ai-chat-title">🔬 波的干涉 - 智能助手</span>
         <button id="ai-chat-close" onclick="toggleAIChat()">×</button>
     </div>
-    <iframe id="ai-chat-iframe" src="https://code.coze.cn/web-sdk/7640388575573852169"></iframe>
+    <!-- 关键：在链接后面加 ?exp=波的干涉实验 -->
+    <iframe id="ai-chat-iframe" 
+            src="https://code.coze.cn/web-sdk/7640388575573852169?exp=波的干涉实验">
+    </iframe>
 </div>
 
 <script>
     let chatBox = document.getElementById('ai-chat-box');
-    let chatOpened = false;
-    const currentExperiment = "波的干涉实验"; // 改这个就行！
     
     function toggleAIChat() {
         chatBox.style.display = chatBox.style.display === 'block' ? 'none' : 'block';
-        
-        // 第一次打开时，自动告诉智能体当前实验
-        if (chatBox.style.display === 'block' && !chatOpened) {
-            setTimeout(function() {
-                let iframe = document.getElementById('ai-chat-iframe');
-                // 给智能体发消息
-                iframe.contentWindow.postMessage({
-                    role: 'user',
-                    content: '【系统提示】用户当前正在查看的实验是：' + currentExperiment + '。所有回答请结合这个实验，不要搞错实验名称！'
-                }, '*');
-            }, 1500);
-            chatOpened = true;
-        }
     }
 </script>
 </body>
