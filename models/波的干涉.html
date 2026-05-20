@@ -1320,5 +1320,95 @@
         // 开始动画循环
         animate();
     </script>
+    <!-- ========== 物理实验智能助手 ========== -->
+<style>
+    #ai-assistant-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4);
+        z-index: 9999;
+        transition: transform 0.3s;
+    }
+    #ai-assistant-btn:hover {
+        transform: scale(1.1);
+    }
+    #ai-chat-box {
+        position: fixed;
+        bottom: 110px;
+        right: 30px;
+        width: 420px;
+        height: 650px;
+        background: white;
+        border-radius: 18px;
+        box-shadow: 0 12px 50px rgba(0, 0, 0, 0.25);
+        z-index: 9998;
+        display: none;
+        overflow: hidden;
+    }
+    #ai-chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 18px 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #ai-chat-close {
+        background: rgba(255, 255, 255, 0.25);
+        border: none;
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #ai-chat-iframe {
+        width: 100%;
+        height: calc(100% - 65px);
+        border: none;
+    }
+    @media (max-width: 500px) {
+        #ai-chat-box {
+            width: calc(100% - 30px) !important;
+            height: 80vh !important;
+            right: 15px !important;
+        }
+    }
+</style>
+
+<!-- 悬浮按钮 -->
+<div id="ai-assistant-btn" onclick="toggleAIChat()">🤖</div>
+
+<!-- 聊天窗口 -->
+<div id="ai-chat-box">
+    <div id="ai-chat-header">
+        <span id="ai-chat-title">🔬 波的干涉 - 智能助手</span>
+        <button id="ai-chat-close" onclick="toggleAIChat()">×</button>
+    </div>
+    <iframe id="ai-chat-iframe" src="https://code.coze.cn/web-sdk/7640388575573852169"></iframe>
+</div>
+
+<script>
+    let chatBox = document.getElementById('ai-chat-box');
+    
+    function toggleAIChat() {
+        chatBox.style.display = chatBox.style.display === 'block' ? 'none' : 'block';
+    }
+</script>
 </body>
 </html>
