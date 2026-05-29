@@ -424,7 +424,27 @@ localStorage.clear();
     width: 24rem !important;
     height: 40rem !important;
   }
-</style>   <script>
+</style>   
+    <script>
+  // 清除所有可能缓存的 Dify 会话 ID，防止 "conversation not exist"
+  (function() {
+    const storageKeys = Object.keys(localStorage);
+    storageKeys.forEach(key => {
+      if (key.includes('conversation_id') || key.includes('dify-chatbot')) {
+        localStorage.removeItem(key);
+      }
+    });
+    // 如果 Dify 脚本也用了 sessionStorage，一并清除
+    const sessionKeys = Object.keys(sessionStorage);
+    sessionKeys.forEach(key => {
+      if (key.includes('conversation_id') || key.includes('dify-chatbot')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  })();
+</script>
+
+    <script>
  window.difyChatbotConfig = {
   token: 'tq9kTBjTtodbaZvA',
   inputs: {
