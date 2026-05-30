@@ -27,7 +27,6 @@
             overflow: hidden; 
         }
 
-        /* 顶部 UI 面板 */
         .ui-panel { 
             background: var(--panel-bg); 
             backdrop-filter: blur(12px);
@@ -45,9 +44,7 @@
         }
 
         .input-group { display: flex; align-items: center; gap: 15px; }
-        
         label { font-size: 15px; color: var(--text-dim); font-weight: bold; letter-spacing: 1px; }
-
         input { 
             background: rgba(0,0,0,0.4); 
             border: 2px solid var(--border-color); 
@@ -60,7 +57,6 @@
             text-align: center;
             font-weight: bold;
         }
-
         button { 
             background: var(--accent-green); 
             color: white; 
@@ -73,10 +69,7 @@
             transition: all 0.2s;
         }
         button:hover { filter: brightness(1.2); transform: translateY(-2px); box-shadow: 0 0 20px rgba(63, 185, 80, 0.4); }
-        
         .reset-btn { background: #484f58; margin-left: 10px; }
-
-        /* 自发辐射面板 */
         .emission-panel { 
             background: rgba(137, 87, 229, 0.1); 
             padding: 12px 25px; 
@@ -87,8 +80,6 @@
             gap: 15px; 
         }
         .emission-btn { background: var(--accent-purple); }
-
-        /* 左侧仪表盘 */
         .dashboard { 
             position: absolute; 
             top: 130px; 
@@ -101,8 +92,6 @@
         }
         .data-label { color: var(--text-dim); font-size: 13px; letter-spacing: 2px; margin-bottom: 8px; }
         .data-value { color: var(--accent-blue); font-size: 36px; font-weight: bold; }
-        
-        /* 右侧参考表 */
         .table-panel { 
             position: absolute; 
             top: 130px; 
@@ -116,8 +105,6 @@
         table { border-collapse: collapse; width: 100%; margin-top: 12px; }
         td, th { padding: 10px 18px; text-align: center; border-bottom: 1px solid var(--border-color); }
         th { color: var(--text-dim); font-weight: bold; background: rgba(255,255,255,0.05); }
-
-        /* 状态日志 */
         .status-log { 
             position: absolute; 
             bottom: 40px; 
@@ -131,7 +118,6 @@
         }
         .ion-msg { color: var(--accent-red) !important; text-shadow: 0 0 15px var(--accent-red); }
         .success-msg { color: var(--accent-green) !important; text-shadow: 0 0 15px var(--accent-green); }
-
         canvas { position: fixed; top: 0; left: 0; z-index: -1; }
     </style>
 </head>
@@ -144,7 +130,6 @@
         <button onclick="firePhoton()">发射光子</button>
         <button class="reset-btn" onclick="resetAtom()">重置系统</button>
     </div>
-
     <div class="emission-panel" id="emissionArea">
         <label>自发辐射控制</label>
         <div id="emissionButtons" style="display: flex; gap: 8px;"></div>
@@ -160,9 +145,7 @@
 <div class="table-panel">
     <div style="font-weight: bold; color: var(--accent-blue); letter-spacing: 1px; text-align: center;">能级跃迁参考表</div>
     <table>
-        <thead>
-            <tr><th>跃迁过程</th><th>能量 (eV)</th></tr>
-        </thead>
+        <thead><tr><th>跃迁过程</th><th>能量 (eV)</th></tr></thead>
         <tbody>
             <tr><td>n=1 → n=2</td><td>10.20</td></tr>
             <tr><td>n=1 → n=3</td><td>12.09</td></tr>
@@ -308,19 +291,18 @@ function draw() {
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
 
-    // 轨道绘制 (加粗)
     for (let i = 1; i <= 4; i++) {
         ctx.beginPath();
         ctx.arc(cx, cy, getR(i), 0, Math.PI * 2);
         if (!isIonized && i === currentN) {
             ctx.strokeStyle = 'rgba(88, 166, 255, 0.8)';
-            ctx.lineWidth = 6; // 大幅加粗活跃轨道
+            ctx.lineWidth = 6;
             ctx.setLineDash([]);
             ctx.shadowBlur = 20;
             ctx.shadowColor = 'rgba(88, 166, 255, 0.6)';
         } else {
             ctx.strokeStyle = 'rgba(48, 54, 61, 0.6)';
-            ctx.lineWidth = 3; // 普通轨道也加粗
+            ctx.lineWidth = 3;
             ctx.setLineDash([15, 20]);
             ctx.shadowBlur = 0;
         }
@@ -329,7 +311,6 @@ function draw() {
     ctx.setLineDash([]);
     ctx.shadowBlur = 0;
 
-    // 原子核
     ctx.beginPath();
     ctx.arc(cx, cy, 15, 0, Math.PI * 2);
     ctx.fillStyle = "#f85149";
@@ -338,12 +319,10 @@ function draw() {
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // 电子
     if (!isIonized) {
         const angle = Date.now() * 0.0008;
         const ex = cx + Math.cos(angle) * getR(currentN);
         const ey = cy + Math.sin(angle) * getR(currentN);
-        
         ctx.beginPath();
         ctx.arc(ex, ey, 9, 0, Math.PI * 2);
         ctx.fillStyle = "#fff";
@@ -353,37 +332,30 @@ function draw() {
         ctx.shadowBlur = 0;
     }
 
-    // 光子绘制 (尺寸增大，能量数值增大)
     for (let i = photons.length - 1; i >= 0; i--) {
         let p = photons[i];
         p.x += p.speed;
-        
         if (p.type === 'INCOMING' && p.active && p.x > cx - 5) {
             const absorbed = processAbsorption(p.energy);
             if (absorbed) { photons.splice(i, 1); continue; }
             else p.active = false;
         }
-
         ctx.shadowBlur = 15;
         ctx.shadowColor = p.type === 'INCOMING' ? "#fff" : "#fbbf24";
-        
         ctx.beginPath();
         ctx.strokeStyle = p.type === 'INCOMING' ? "#fff" : "#fbbf24";
-        ctx.lineWidth = 4; // 增加光子波线条厚度
-        for (let j = 0; j < 50; j++) { // 增加波形宽度
+        ctx.lineWidth = 4;
+        for (let j = 0; j < 50; j++) {
             const wx = p.x - j;
-            const wy = p.y + Math.sin(wx * 0.2 + Date.now()*0.01) * 12; // 增加波动振幅
+            const wy = p.y + Math.sin(wx * 0.2 + Date.now()*0.01) * 12;
             if (j === 0) ctx.moveTo(wx, wy);
             else ctx.lineTo(wx, wy);
         }
         ctx.stroke();
         ctx.shadowBlur = 0;
-
-        // 增大能量数值显示
         ctx.fillStyle = p.type === 'INCOMING' ? "#fff" : "#fbbf24";
-        ctx.font = "bold 22px 'Arial'"; // 显著增大字体
+        ctx.font = "bold 22px 'Arial'";
         ctx.fillText(`${p.energy.toFixed(2)} eV`, p.x - 30, p.y - 30);
-
         if (p.x > canvas.width + 100) photons.splice(i, 1);
     }
     requestAnimationFrame(draw);
@@ -393,22 +365,17 @@ updateUI();
 draw();
 </script>
 
-<!-- Dify 智能助手配置 - 每个实验独立会话 -->
+<!-- Dify 智能助手配置 - 使用 user_id 隔离实验，不传 conversation_id 避免报错 -->
 <script>
 window.difyChatbotConfig = {
     token: 'tq9kTBjTtodbaZvA',
     inputs: {
         current_exp: "氢原子光谱"
     },
-    conversation_id: "hydrogen_spectrum",   // 固定ID，确保本实验对话独立
     systemVariables: {
-        // user_id: 'YOU CAN DEFINE USER ID HERE',
-        // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
+        user_id: "exp_hydrogen_spectrum"   // 每个实验设置唯一 user_id，对话自动隔离
     },
-    userVariables: {
-        // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
-        // name: 'YOU CAN DEFINE USER NAME HERE',
-    },
+    userVariables: {}
 };
 </script>
 <script src="https://udify.app/embed.min.js" id="tq9kTBjTtodbaZvA" defer></script>
