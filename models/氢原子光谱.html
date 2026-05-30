@@ -391,89 +391,36 @@ function draw() {
 
 updateUI();
 draw();
-    localStorage.clear();
-</script>
-       <script>
-localStorage.clear();
- window.difyChatbotConfig = {
-  token: 'tq9kTBjTtodbaZvA',
-  inputs: {
-    current_exp: "杨氏双缝干涉"
-  },
-  systemVariables: {
-    // user_id: 'YOU CAN DEFINE USER ID HERE',
-    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
-  },
-  userVariables: {
-    // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
-    // name: 'YOU CAN DEFINE USER NAME HERE',
-  },
- }
-</script>
-<script
- src="https://udify.app/embed.min.js"
- id="tq9kTBjTtodbaZvA"
- defer>
-</script>
-<style>
-  #dify-chatbot-bubble-button {
-    background-color: #FFB6C1 !important;
-  }
-  /* 展开聊天窗口的宽度和高度 */
-  #dify-chatbot-bubble-window {
-    width: 24rem !important;
-    height: 40rem !important;
-  }
-</style>   
-    <script>
-  // 清除所有可能缓存的 Dify 会话 ID，防止 "conversation not exist"
-  (function() {
-    const storageKeys = Object.keys(localStorage);
-    storageKeys.forEach(key => {
-      if (key.includes('conversation_id') || key.includes('dify-chatbot')) {
-        localStorage.removeItem(key);
-      }
-    });
-    // 如果 Dify 脚本也用了 sessionStorage，一并清除
-    const sessionKeys = Object.keys(sessionStorage);
-    sessionKeys.forEach(key => {
-      if (key.includes('conversation_id') || key.includes('dify-chatbot')) {
-        sessionStorage.removeItem(key);
-      }
-    });
-  })();
 </script>
 
-    <script>
- window.difyChatbotConfig = {
-  token: 'tq9kTBjTtodbaZvA',
-  inputs: {
-    current_exp: "氢原子光谱"
-  },
-  systemVariables: {
-    // user_id: 'YOU CAN DEFINE USER ID HERE',
-    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
-  },
-  userVariables: {
-    // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
-    // name: 'YOU CAN DEFINE USER NAME HERE',
-  },
- }
+<!-- Dify 智能助手配置 - 每个实验独立会话 -->
+<script>
+window.difyChatbotConfig = {
+    token: 'tq9kTBjTtodbaZvA',
+    inputs: {
+        current_exp: "氢原子光谱"
+    },
+    conversation_id: "hydrogen_spectrum",   // 固定ID，确保本实验对话独立
+    systemVariables: {
+        // user_id: 'YOU CAN DEFINE USER ID HERE',
+        // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
+    },
+    userVariables: {
+        // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
+        // name: 'YOU CAN DEFINE USER NAME HERE',
+    },
+};
 </script>
-<script
- src="https://udify.app/embed.min.js"
- id="tq9kTBjTtodbaZvA"
- defer>
-</script>
+<script src="https://udify.app/embed.min.js" id="tq9kTBjTtodbaZvA" defer></script>
 <style>
-  #dify-chatbot-bubble-button {
-    background-color: #FFB6C1 !important;
-  }
-  /* 展开聊天窗口的宽度和高度 */
-  #dify-chatbot-bubble-window {
-    width: 24rem !important;
-    height: 40rem !important;
-  }
+    #dify-chatbot-bubble-button {
+        background-color: #FFB6C1 !important;
+    }
+    #dify-chatbot-bubble-window {
+        width: 24rem !important;
+        height: 40rem !important;
+    }
 </style>
+
 </body>
 </html>
