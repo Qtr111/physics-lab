@@ -345,7 +345,7 @@
         }
         
         .interference-legend {
-            background-color: #2ecc71; /* 改为绿色 */
+            background-color: #2ecc71;
         }
         
         .wave-controls {
@@ -391,7 +391,6 @@
             margin-top: 15px;
         }
         
-        /* 新增样式：侧边控制面板 */
         .side-controls {
             position: absolute;
             top: 0;
@@ -449,7 +448,6 @@
             }
         }
         
-        /* 坐标轴样式 */
         .coordinate-axis {
             position: absolute;
             left: 0;
@@ -478,7 +476,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- 左侧控制面板 -->
         <div class="side-controls left-side-controls">
             <div class="side-control-panel">
                 <h3>左波源控制</h3>
@@ -504,13 +501,10 @@
             </div>
         </div>
         
-        <!-- 中间主内容区 -->
         <div class="status" id="status">点击按钮开始模拟</div>
         
         <div class="canvas-container">
-            <!-- 坐标轴 -->
             <div class="coordinate-axis" id="coordinateAxis" style="top: 50%;"></div>
-            
             <div class="wave-source" id="sourceLeft"></div>
             <div class="wave-source" id="sourceRight"></div>
             <canvas id="waveCanvas" width="1000" height="450"></canvas>
@@ -546,7 +540,6 @@
             </div>
         </div>
         
-        <!-- 右侧控制面板 -->
         <div class="side-controls right-side-controls">
             <div class="side-control-panel">
                 <h3>右波源控制</h3>
@@ -637,19 +630,16 @@
         const frameSlider = document.getElementById('frameSlider');
         
         const status = document.getElementById('status');
-        
-        // 坐标轴元素
         const coordinateAxis = document.getElementById('coordinateAxis');
         
         // 物理参数
-        let amplitudeLeft = parseFloat(amplitudeLeftSlider.value);  // 左波源振幅
-        let amplitudeRight = parseFloat(amplitudeRightSlider.value); // 右波源振幅
-        let waveSpeed = parseFloat(waveSpeedSlider.value);           // 波速（像素/秒）
-        const particleCount = 150;                                    // 增加质点数量，获得更连续的波形
-        const leftSourceX = 50;                                      // 左波源位置
-        const rightSourceX = canvas.width - 50;                      // 右波源位置
+        let amplitudeLeft = parseFloat(amplitudeLeftSlider.value);
+        let amplitudeRight = parseFloat(amplitudeRightSlider.value);
+        let waveSpeed = parseFloat(waveSpeedSlider.value);
+        const particleCount = 150;
+        const leftSourceX = 50;
+        const rightSourceX = canvas.width - 50;
         
-        // 计算质点位置
         const particles = [];
         const particleSpacing = (canvas.width - 100) / (particleCount - 1);
         
@@ -660,7 +650,6 @@
             });
         }
         
-        // 状态变量
         let time = 0;
         let animationId;
         let leftWaveActive = false;
@@ -668,22 +657,15 @@
         let leftStartTime = 0;
         let rightStartTime = 0;
         let frequency = parseFloat(frequencySlider.value);
-        let isPaused = false; // 暂停状态
-        
-        // 显示/隐藏控制
+        let isPaused = false;
         let showLeftWave = true;
         let showRightWave = true;
-        let showInterference = false; // 默认不显示干涉波
+        let showInterference = false;
+        let leftDirection = 1;
+        let rightDirection = 1;
+        let manualTime = 0;
+        let maxTime = 10;
         
-        // 起振方向控制
-        let leftDirection = 1; // 1表示向上，-1表示向下
-        let rightDirection = 1; // 1表示向上，-1表示向下
-        
-        // 帧控制相关变量
-        let manualTime = 0; // 手动控制的时间
-        let maxTime = 10; // 最大时间范围（秒）
-        
-        // 更新参数显示
         function updateParameterDisplay() {
             frequencyValue.textContent = frequency.toFixed(2) + " Hz";
             waveSpeedValue.textContent = waveSpeed;
@@ -691,20 +673,15 @@
             amplitudeRightValue.textContent = amplitudeRight;
         }
         
-        // 绘制坐标轴
         function drawCoordinateAxis() {
             const axisY = canvas.height / 2;
-            
-            // 绘制坐标轴线
             ctx.beginPath();
             ctx.moveTo(50, axisY);
             ctx.lineTo(canvas.width - 50, axisY);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
             ctx.lineWidth = 2;
             ctx.stroke();
-            
-            // 绘制刻度线
-            const tickCount = 11; // 包括起点和终点
+            const tickCount = 11;
             for (let i = 0; i < tickCount; i++) {
                 const x = 50 + (i / (tickCount - 1)) * (canvas.width - 100);
                 ctx.beginPath();
@@ -713,157 +690,98 @@
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
                 ctx.lineWidth = 1;
                 ctx.stroke();
-                
-                // 绘制刻度值
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText(i.toString(), x, axisY + 20);
             }
-            
-            // 恢复文本对齐方式
             ctx.textAlign = 'left';
         }
         
-        // 计算左波在某点的位移
         function getLeftWaveDisplacement(x, t) {
             if (!leftWaveActive) return 0;
-            
-            // 计算波从波源传播到该点的时间
             const distanceFromLeft = x - leftSourceX;
             if (distanceFromLeft < 0) return 0;
-            
             const waveTravelTime = distanceFromLeft / waveSpeed;
             const effectiveTime = t - leftStartTime - waveTravelTime;
-            
-            // 如果波还没有传播到这个点
             if (effectiveTime < 0) return 0;
-            
-            // 简谐波方程，考虑起振方向
             return leftDirection * amplitudeLeft * Math.sin(2 * Math.PI * frequency * effectiveTime);
         }
         
-        // 计算右波在某点的位移
         function getRightWaveDisplacement(x, t) {
             if (!rightWaveActive) return 0;
-            
-            // 计算波从波源传播到该点的时间
             const distanceFromRight = rightSourceX - x;
             if (distanceFromRight < 0) return 0;
-            
             const waveTravelTime = distanceFromRight / waveSpeed;
             const effectiveTime = t - rightStartTime - waveTravelTime;
-            
-            // 如果波还没有传播到这个点
             if (effectiveTime < 0) return 0;
-            
-            // 简谐波方程（注意传播方向相反），考虑起振方向
             return rightDirection * amplitudeRight * Math.sin(2 * Math.PI * frequency * effectiveTime);
         }
         
-        // 判断质点是否在两列波都已到达的区域（干涉区域）
         function isInInterferenceRegion(x, t) {
             if (!leftWaveActive || !rightWaveActive) return false;
-            
-            // 计算左波是否已传播到该点
             const leftWaveArrived = x <= leftSourceX + waveSpeed * (t - leftStartTime);
-            
-            // 计算右波是否已传播到该点
             const rightWaveArrived = x >= rightSourceX - waveSpeed * (t - rightStartTime);
-            
-            // 两列波都已传播到该点，说明在干涉区域
             return leftWaveArrived && rightWaveArrived;
         }
         
-        // 绘制介质质点（支持传入自定义时间）
         function drawParticles(currentTime) {
             const drawTime = currentTime !== undefined ? currentTime : time;
-            
-            // 绘制所有连接线
             for (let i = 1; i < particles.length; i++) {
                 const prevParticle = particles[i - 1];
                 const particle = particles[i];
-                
                 const prevX = prevParticle.x;
                 const x = particle.x;
-                
-                // 计算两个质点的总位移
                 const prevLeftDisplacement = getLeftWaveDisplacement(prevX, drawTime);
                 const prevRightDisplacement = getRightWaveDisplacement(prevX, drawTime);
                 const prevDisplacement = prevLeftDisplacement + prevRightDisplacement;
-                
                 const leftDisplacement = getLeftWaveDisplacement(x, drawTime);
                 const rightDisplacement = getRightWaveDisplacement(x, drawTime);
                 const displacement = leftDisplacement + rightDisplacement;
-                
-                // 检查两个质点是否都在干涉区域
                 const prevInInterference = isInInterferenceRegion(prevX, drawTime);
                 const inInterference = isInInterferenceRegion(x, drawTime);
-                
-                let lineColor = '#7f8c8d'; // 默认灰色
-                
-                // 如果两个质点都在干涉区域
+                let lineColor = '#7f8c8d';
                 if (prevInInterference && inInterference) {
-                    // 只有在显示干涉波时才绘制绿色干涉线
                     if (showInterference) {
-                        lineColor = '#2ecc71'; // 绿色 - 干涉波
+                        lineColor = '#2ecc71';
                     } else {
-                        // 隐藏干涉波时，不绘制任何连接线（直接跳过）
-                        continue; // 跳过这一对质点的连接线绘制
+                        continue;
                     }
-                }
-                // 两个质点都不在干涉区域，或只有一个在干涉区域
-                else {
-                    // 左波单独存在的情况
+                } else {
                     if (leftWaveActive && !rightWaveActive) {
                         if (showLeftWave) {
-                            lineColor = '#ff9f43'; // 橙色 - 左波
+                            lineColor = '#ff9f43';
                         } else {
-                            continue; // 隐藏左波时不绘制连接线
+                            continue;
                         }
-                    }
-                    // 右波单独存在的情况
-                    else if (!leftWaveActive && rightWaveActive) {
+                    } else if (!leftWaveActive && rightWaveActive) {
                         if (showRightWave) {
-                            lineColor = '#54a0ff'; // 蓝色 - 右波
+                            lineColor = '#54a0ff';
                         } else {
-                            continue; // 隐藏右波时不绘制连接线
+                            continue;
                         }
-                    }
-                    // 两波都存在但不在干涉区域
-                    else if (leftWaveActive && rightWaveActive) {
-                        // 判断质点区域
+                    } else if (leftWaveActive && rightWaveActive) {
                         const leftWaveFront = leftSourceX + waveSpeed * (drawTime - leftStartTime);
                         const rightWaveFront = rightSourceX - waveSpeed * (drawTime - rightStartTime);
-                        
-                        // 都在左波区域
                         if (prevX < leftWaveFront && x < leftWaveFront) {
                             if (showLeftWave) {
-                                lineColor = '#ff9f43'; // 橙色 - 左波
+                                lineColor = '#ff9f43';
                             } else {
-                                continue; // 隐藏左波时不绘制连接线
+                                continue;
                             }
-                        }
-                        // 都在右波区域
-                        else if (prevX > rightWaveFront && x > rightWaveFront) {
+                        } else if (prevX > rightWaveFront && x > rightWaveFront) {
                             if (showRightWave) {
-                                lineColor = '#54a0ff'; // 蓝色 - 右波
+                                lineColor = '#54a0ff';
                             } else {
-                                continue; // 隐藏右波时不绘制连接线
+                                continue;
                             }
+                        } else {
+                            continue;
                         }
-                        // 跨区域或未到达区域
-                        else {
-                            continue; // 不绘制连接线
-                        }
-                    }
-                    // 没有波源活动
-                    else {
-                        continue; // 不绘制连接线
+                    } else {
+                        continue;
                     }
                 }
-                
-                // 绘制连接线
                 ctx.beginPath();
                 ctx.moveTo(prevX, prevParticle.originalY - prevDisplacement);
                 ctx.lineTo(x, particle.originalY - displacement);
@@ -871,85 +789,56 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
             }
-            
-            // 绘制所有质点
             particles.forEach((particle) => {
                 const x = particle.x;
-                
-                // 计算该质点的总位移
                 let displacement = 0;
                 if (leftWaveActive || rightWaveActive) {
                     const leftDisplacement = getLeftWaveDisplacement(x, drawTime);
                     const rightDisplacement = getRightWaveDisplacement(x, drawTime);
                     displacement = leftDisplacement + rightDisplacement;
                 }
-                
-                // 决定是否绘制质点
                 let shouldDrawParticle = false;
                 let particleColor = '#7f8c8d';
-                
-                // 检查质点是否在干涉区域
                 const inInterference = isInInterferenceRegion(x, drawTime);
-                
                 if (inInterference) {
-                    // 在干涉区域
                     if (showInterference) {
                         shouldDrawParticle = true;
-                        particleColor = '#2ecc71'; // 绿色 - 干涉波
+                        particleColor = '#2ecc71';
                     }
-                    // 隐藏干涉波时不绘制质点
-                }
-                // 不在干涉区域
-                else {
-                    // 左波单独存在的情况
+                } else {
                     if (leftWaveActive && !rightWaveActive) {
                         if (showLeftWave) {
                             shouldDrawParticle = true;
-                            particleColor = '#ff9f43'; // 橙色 - 左波
+                            particleColor = '#ff9f43';
                         }
-                    }
-                    // 右波单独存在的情况
-                    else if (!leftWaveActive && rightWaveActive) {
+                    } else if (!leftWaveActive && rightWaveActive) {
                         if (showRightWave) {
                             shouldDrawParticle = true;
-                            particleColor = '#54a0ff'; // 蓝色 - 右波
+                            particleColor = '#54a0ff';
                         }
-                    }
-                    // 两波都存在但不在干涉区域
-                    else if (leftWaveActive && rightWaveActive) {
-                        // 判断质点区域
+                    } else if (leftWaveActive && rightWaveActive) {
                         const leftWaveFront = leftSourceX + waveSpeed * (drawTime - leftStartTime);
                         const rightWaveFront = rightSourceX - waveSpeed * (drawTime - rightStartTime);
-                        
-                        // 在左波区域
                         if (x < leftWaveFront) {
                             if (showLeftWave) {
                                 shouldDrawParticle = true;
-                                particleColor = '#ff9f43'; // 橙色 - 左波
+                                particleColor = '#ff9f43';
                             }
-                        }
-                        // 在右波区域
-                        else if (x > rightWaveFront) {
+                        } else if (x > rightWaveFront) {
                             if (showRightWave) {
                                 shouldDrawParticle = true;
-                                particleColor = '#54a0ff'; // 蓝色 - 右波
+                                particleColor = '#54a0ff';
                             }
+                        } else {
+                            shouldDrawParticle = true;
                         }
-                        // 在两波之间但还没有被波传播到
-                        else {
-                            shouldDrawParticle = true; // 绘制灰色静止质点
-                        }
-                    }
-                    // 没有波源活动
-                    else {
-                        shouldDrawParticle = true; // 绘制灰色静止质点
+                    } else {
+                        shouldDrawParticle = true;
                     }
                 }
-                
-                // 绘制质点
                 if (shouldDrawParticle) {
                     ctx.beginPath();
-                    ctx.arc(x, particle.originalY - displacement, 4, 0, Math.PI * 2); // 稍微减小质点半径
+                    ctx.arc(x, particle.originalY - displacement, 4, 0, Math.PI * 2);
                     ctx.fillStyle = particleColor;
                     ctx.fill();
                     ctx.strokeStyle = 'white';
@@ -959,33 +848,19 @@
             });
         }
         
-        // 绘制波形（支持传入自定义时间）
         function drawWave(currentTime) {
             const drawTime = currentTime !== undefined ? currentTime : time;
-            
-            // 清除画布
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // 绘制网格背景
             drawGrid();
-            
-            // 绘制坐标轴
             drawCoordinateAxis();
-            
-            // 绘制质点
             drawParticles(drawTime);
-            
-            // 绘制左波源的波（如果存在且需要显示）
             if (leftWaveActive && showLeftWave) {
                 ctx.strokeStyle = '#ff9f43';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 3]);
                 ctx.beginPath();
-                
-                // 只绘制左波区域的波
                 const leftWaveFront = leftSourceX + waveSpeed * (drawTime - leftStartTime);
                 let startedDrawing = false;
-                
                 for (let x = 0; x <= Math.min(canvas.width, leftWaveFront); x++) {
                     const y = canvas.height / 2 - getLeftWaveDisplacement(x, drawTime);
                     if (!startedDrawing) {
@@ -997,18 +872,13 @@
                 }
                 ctx.stroke();
             }
-            
-            // 绘制右波源的波（如果存在且需要显示）
             if (rightWaveActive && showRightWave) {
                 ctx.strokeStyle = '#54a0ff';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 3]);
                 ctx.beginPath();
-                
-                // 只绘制右波区域的波
                 const rightWaveFront = rightSourceX - waveSpeed * (drawTime - rightStartTime);
                 let startedDrawing = false;
-                
                 for (let x = Math.max(0, rightWaveFront); x <= canvas.width; x++) {
                     const y = canvas.height / 2 - getRightWaveDisplacement(x, drawTime);
                     if (!startedDrawing) {
@@ -1020,24 +890,18 @@
                 }
                 ctx.stroke();
             }
-            
             ctx.setLineDash([]);
         }
         
-        // 绘制网格背景
         function drawGrid() {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             ctx.lineWidth = 0.5;
-            
-            // 绘制垂直线
             for (let x = 0; x < canvas.width; x += 50) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
                 ctx.stroke();
             }
-            
-            // 绘制水平线
             for (let y = 0; y < canvas.height; y += 50) {
                 ctx.beginPath();
                 ctx.moveTo(0, y);
@@ -1046,13 +910,9 @@
             }
         }
         
-        // 动画循环
         function animate() {
-            // 如果不是暂停状态，更新时间和绘制
             if (!isPaused) {
-                time += 1/80; // 约45fps，原速度的1.5倍
-                
-                // 更新帧控制滑动条的值（如果超过当前最大值，扩展最大值）
+                time += 1/80;
                 if (time > maxTime) {
                     maxTime = Math.ceil(time);
                     frameSlider.max = maxTime;
@@ -1060,25 +920,17 @@
                 frameSlider.value = time;
                 manualTime = time;
             }
-            
-            // 绘制当前帧
             if (isPaused) {
                 drawWave(manualTime);
             } else {
                 drawWave();
             }
-            
-            // 更新状态显示
             updateStatus();
-            
-            // 继续动画循环
             animationId = requestAnimationFrame(animate);
         }
         
-        // 更新状态显示
         function updateStatus() {
             let statusText = "";
-            
             if (isPaused) {
                 statusText += "已暂停";
                 if (leftWaveActive || rightWaveActive) {
@@ -1087,7 +939,6 @@
             } else {
                 statusText += "播放中";
             }
-            
             if (leftWaveActive && rightWaveActive) {
                 statusText += ` | 两列波干涉中`;
                 if (showInterference) {
@@ -1108,14 +959,10 @@
             } else {
                 statusText += " | 点击按钮开始模拟";
             }
-            
-            // 添加起振方向信息
             statusText += ` | 左波: ${leftDirection > 0 ? '向上' : '向下'} | 右波: ${rightDirection > 0 ? '向上' : '向下'}`;
-            
             status.textContent = statusText;
         }
         
-        // 启动左波源
         function startLeftWave() {
             leftWaveActive = true;
             leftStartTime = time;
@@ -1124,7 +971,6 @@
             updateStatus();
         }
         
-        // 启动右波源
         function startRightWave() {
             rightWaveActive = true;
             rightStartTime = time;
@@ -1133,44 +979,35 @@
             updateStatus();
         }
         
-        // 同时启动左右波源
         function startBothWaves() {
             leftWaveActive = true;
             rightWaveActive = true;
             leftStartTime = time;
             rightStartTime = time;
-            
-            // 同时高亮两个波源
             sourceLeft.style.boxShadow = "0 0 15px #ff9f43, 0 0 20px #ff9f43";
             sourceLeft.style.transform = "translate(-50%, -50%) scale(1.15)";
             sourceRight.style.boxShadow = "0 0 15px #54a0ff, 0 0 20px #54a0ff";
             sourceRight.style.transform = "translate(-50%, -50%) scale(1.15)";
-            
             updateStatus();
         }
         
-        // 切换显示/隐藏左侧波
         function toggleLeftWave() {
             showLeftWave = !showLeftWave;
             toggleLeftWaveBtn.textContent = showLeftWave ? "隐藏左侧波" : "显示左侧波";
         }
         
-        // 切换显示/隐藏右侧波
         function toggleRightWave() {
             showRightWave = !showRightWave;
             toggleRightWaveBtn.textContent = showRightWave ? "隐藏右侧波" : "显示右侧波";
         }
         
-        // 切换显示/隐藏干涉波
         function toggleInterference() {
             showInterference = !showInterference;
             toggleInterferenceBtn.textContent = showInterference ? "隐藏干涉波" : "显示干涉波";
         }
         
-        // 设置左波起振方向
         function setLeftDirection(direction) {
             leftDirection = direction;
-            // 更新按钮样式
             if (direction === 1) {
                 leftDirectionUpBtn.classList.add('up');
                 leftDirectionUpBtn.classList.remove('down');
@@ -1184,10 +1021,8 @@
             }
         }
         
-        // 设置右波起振方向
         function setRightDirection(direction) {
             rightDirection = direction;
-            // 更新按钮样式
             if (direction === 1) {
                 rightDirectionUpBtn.classList.add('up');
                 rightDirectionUpBtn.classList.remove('down');
@@ -1201,29 +1036,23 @@
             }
         }
         
-        // 暂停/继续动画
         function togglePause() {
             isPaused = !isPaused;
             if (isPaused) {
                 pauseBtn.textContent = "继续动画";
                 pauseBtn.style.backgroundColor = "#2ecc71";
-                // 显示帧控制滑动条
                 frameControl.classList.add('active');
-                // 设置帧控制滑动条的当前值
                 frameSlider.value = time;
                 manualTime = time;
             } else {
                 pauseBtn.textContent = "暂停动画";
                 pauseBtn.style.backgroundColor = "#9b59b6";
-                // 隐藏帧控制滑动条
                 frameControl.classList.remove('active');
-                // 将当前手动时间同步到实际时间
                 time = manualTime;
             }
             updateStatus();
         }
         
-        // 帧控制滑动条变化处理
         function onFrameSliderChange() {
             if (isPaused) {
                 manualTime = parseFloat(frameSlider.value);
@@ -1231,7 +1060,6 @@
             }
         }
         
-        // 重置模拟
         function resetSimulation() {
             leftWaveActive = false;
             rightWaveActive = false;
@@ -1241,36 +1069,27 @@
             isPaused = false;
             showLeftWave = true;
             showRightWave = true;
-            showInterference = false; // 重置为不显示干涉波
+            showInterference = false;
             manualTime = 0;
-            
-            // 恢复按钮状态
             toggleLeftWaveBtn.textContent = "隐藏左侧波";
             toggleRightWaveBtn.textContent = "隐藏右侧波";
             toggleInterferenceBtn.textContent = "显示干涉波";
             pauseBtn.textContent = "暂停动画";
             pauseBtn.style.backgroundColor = "#9b59b6";
-            
-            // 重置帧控制
             frameSlider.value = 0;
             frameSlider.max = maxTime;
             frameControl.classList.remove('active');
-            
-            // 重置起振方向
             setLeftDirection(1);
             setRightDirection(1);
-            
             sourceLeft.style.boxShadow = "0 0 10px #ff9f43";
             sourceLeft.style.transform = "translate(-50%, -50%) scale(1)";
             sourceRight.style.boxShadow = "0 0 10px #54a0ff";
             sourceRight.style.transform = "translate(-50%, -50%) scale(1)";
-            
             updateParameterDisplay();
             updateStatus();
             drawWave(0);
         }
         
-        // 事件监听器
         frequencySlider.addEventListener('input', function() {
             frequency = parseFloat(this.value);
             updateParameterDisplay();
@@ -1291,7 +1110,6 @@
             updateParameterDisplay();
         });
         
-        // 帧控制滑动条事件
         frameSlider.addEventListener('input', onFrameSliderChange);
         
         startLeftBtn.addEventListener('click', startLeftWave);
@@ -1303,54 +1121,41 @@
         pauseBtn.addEventListener('click', togglePause);
         resetBtn.addEventListener('click', resetSimulation);
         
-        // 方向控制事件监听器
         leftDirectionUpBtn.addEventListener('click', () => setLeftDirection(1));
         leftDirectionDownBtn.addEventListener('click', () => setLeftDirection(-1));
         rightDirectionUpBtn.addEventListener('click', () => setRightDirection(1));
         rightDirectionDownBtn.addEventListener('click', () => setRightDirection(-1));
         
-        // 初始化显示
         updateParameterDisplay();
-        setLeftDirection(1); // 默认向上
-        setRightDirection(1); // 默认向上
-        
-        // 初始化帧控制滑动条
+        setLeftDirection(1);
+        setRightDirection(1);
         frameSlider.max = maxTime;
         
-        // 开始动画循环
         animate();
     </script>
-<script>
- window.localStorage.clear();
- window.difyChatbotConfig = {
-  token: 'tq9kTBjTtodbaZvA',
-  inputs: {
-    current_exp: "机械波的干涉"
-  },
-  systemVariables: {
-    // user_id: 'YOU CAN DEFINE USER ID HERE',
-    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
-  },
-  userVariables: {
-    // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
-    // name: 'YOU CAN DEFINE USER NAME HERE',
-  },
- }
-</script>
-<script
- src="https://udify.app/embed.min.js"
- id="tq9kTBjTtodbaZvA"
- defer>
-</script>
-<style>
-  #dify-chatbot-bubble-button {
-    background-color: #FFB6C1 !important;
-  }
-  /* 展开聊天窗口的宽度和高度 */
-  #dify-chatbot-bubble-window {
-    width: 24rem !important;
-    height: 40rem !important;
-  }
-</style>
+
+    <!-- Dify 智能助手配置 - 使用 user_id 隔离实验，不传 conversation_id 避免报错 -->
+    <script>
+    window.difyChatbotConfig = {
+        token: 'tq9kTBjTtodbaZvA',
+        inputs: {
+            current_exp: "机械波的干涉"
+        },
+        systemVariables: {
+            user_id: "exp_wave_interference"   // 每个实验唯一 user_id，对话自动隔离
+        },
+        userVariables: {}
+    };
+    </script>
+    <script src="https://udify.app/embed.min.js" id="tq9kTBjTtodbaZvA" defer></script>
+    <style>
+        #dify-chatbot-bubble-button {
+            background-color: #FFB6C1 !important;
+        }
+        #dify-chatbot-bubble-window {
+            width: 24rem !important;
+            height: 40rem !important;
+        }
+    </style>
 </body>
 </html>
