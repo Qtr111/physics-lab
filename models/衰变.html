@@ -5,19 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>粒子衰变</title>
     <style>
+        /* 保持 body 清洁，防止动态注入的智能体组件被 flex 布局污染破坏 */
         body {
             font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
             background: #f0f4fa;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            width: 100vw;
+            color: #1e2f4e;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* 将原 body 的弹性居中布局安全地转移到独立视口容器中 */
+        .app-container {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            margin: 0;
+            width: 100%;
             min-height: 100vh;
-            color: #1e2f4e;
-            box-sizing: border-box;
         }
+
         .main-box {
             max-width: 1200px;
             width: 100%;
@@ -115,38 +126,67 @@
             transform: translateY(2px);
             box-shadow: 0 4px 0 #1a2c3d;
         }
+
+        /* 🤖 Dify 智能体样式强制保护，确保其在右下角完美浮动显现 */
+        #dify-chatbot-bubble-button {
+            background-color: #1f6e8c !important; /* 配合本实验主题的偏蓝色调 */
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            z-index: 999999 !important;
+        }
+        #dify-chatbot-bubble-window {
+            position: fixed !important;
+            bottom: 90px !important;
+            right: 20px !important;
+            z-index: 999999 !important;
+        }
     </style>
+
+    <script>
+        window.difyChatbotConfig = {
+            token: 'tq9kTBjTtodbaZvA',
+            inputs: {
+                current_exp: "放射性核衰变与磁场偏转（α衰变与β-衰变）"
+            },
+            systemVariables: {
+                user_id: "exp_nuclear_decay" // 设立独立的对话隔离标识
+            },
+            userVariables: {}
+        };
+    </script>
 </head>
 <body>
 
-<div class="main-box">
-    <h2>⚛️ 磁场偏转 · 大圆居中</h2>
-    
-    <div class="control-panel">
-        <div class="control-group">
-            <div class="radio-tile">
-                <strong style="font-size:1.1rem;">🧲 磁场方向</strong><br>
-                <input type="radio" id="fieldIn" name="magField" value="in" checked>
-                <label for="fieldIn"><span style="font-size:1.6rem; font-weight:900; color:#1f5090;">×</span> 向里</label>
-                <input type="radio" id="fieldOut" name="magField" value="out" style="margin-left:15px;">
-                <label for="fieldOut"><span style="font-size:1.9rem; font-weight:900; color:#1f5090;">·</span> 向外</label>
+<div class="app-container">
+    <div class="main-box">
+        <h2>⚛️ 磁场偏转 · 大圆居中</h2>
+        
+        <div class="control-panel">
+            <div class="control-group">
+                <div class="radio-tile">
+                    <strong style="font-size:1.1rem;">🧲 磁场方向</strong><br>
+                    <input type="radio" id="fieldIn" name="magField" value="in" checked>
+                    <label for="fieldIn"><span style="font-size:1.6rem; font-weight:900; color:#1f5090;">×</span> 向里</label>
+                    <input type="radio" id="fieldOut" name="magField" value="out" style="margin-left:15px;">
+                    <label for="fieldOut"><span style="font-size:1.9rem; font-weight:900; color:#1f5090;">·</span> 向外</label>
+                </div>
+                <div class="radio-tile">
+                    <strong style="font-size:1.1rem;">☢️ 衰变类型</strong><br>
+                    <input type="radio" id="decayAlpha" name="decay" value="alpha" checked>
+                    <label for="decayAlpha">α 衰变 (外切)</label>
+                    <input type="radio" id="decayBeta" name="decay" value="beta" style="margin-left:15px;">
+                    <label for="decayBeta">β⁻ 衰变 (内切)</label>
+                </div>
             </div>
-            <div class="radio-tile">
-                <strong style="font-size:1.1rem;">☢️ 衰变类型</strong><br>
-                <input type="radio" id="decayAlpha" name="decay" value="alpha" checked>
-                <label for="decayAlpha">α 衰变 (外切)</label>
-                <input type="radio" id="decayBeta" name="decay" value="beta" style="margin-left:15px;">
-                <label for="decayBeta">β⁻ 衰变 (内切)</label>
+            <div class="btn-group">
+                <button id="startBtn" class="btn btn-start">▶ 开始运动</button>
+                <button id="resetBtn" class="btn btn-reset">↺ 重置</button>
             </div>
         </div>
-        <div class="btn-group">
-            <button id="startBtn" class="btn btn-start">▶ 开始运动</button>
-            <button id="resetBtn" class="btn btn-reset">↺ 重置</button>
-        </div>
-    </div>
 
-    <!-- 画布尺寸 1000x600，大圆圆心固定在画布正中心 -->
-    <canvas id="canvas" width="1000" height="600"></canvas>
+        <canvas id="canvas" width="1000" height="600"></canvas>
+    </div>
 </div>
 
 <script>
@@ -156,220 +196,112 @@
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
 
-        // ------------------- 状态 -------------------
         let isAnimating = false;
-        let magneticDir = 'in';       // 'in' = 向里(×), 'out' = 向外(·)
+        let magneticDir = 'in';       
         let decayType = 'alpha';
 
-        // ------------------- 物理参数 -------------------
         const K = 0.0022;
+        const BIG_RADIUS = 160;       
+        const ALPHA_SMALL_R = 35;     
+        const BETA_SMALL_R = 22;      
         
-        // ------------------- 半径定义 -------------------
-        // 大圆（α粒子或β⁻粒子）半径固定，圆心在画布正中心
-        const BIG_RADIUS = 160;       // 大圆半径，完全居中
-        
-        // 小圆半径：根据衰变类型和电荷比设定，视觉差距大
-        const ALPHA_SMALL_R = 35;     // α衰变反冲核X半径
-        const BETA_SMALL_R = 22;      // β⁻衰变反冲核X⁺半径
-        
-        // 粒子数组
         let particles = [];
 
-        // ------------------- 初始化/重置 -------------------
         function initSimulation() {
             particles = [];
             const B_sign = (magneticDir === 'in') ? -1 : 1;
 
             if (decayType === 'alpha') {
-                // α衰变: 外切，大圆(α)圆心在窗口中心，小圆(X)外切于大圆
-                // α粒子带正电，速度向右；反冲核带正电，速度向左
                 createAlphaParticleCenter('α',  +2, '#c93a3a', +1, B_sign, BIG_RADIUS);
                 createSmallParticleOuter('X', +4, '#d4a02b', -1, B_sign, ALPHA_SMALL_R, BIG_RADIUS);
             } else {
-                // β⁻衰变: 内切，大圆(β⁻)圆心在窗口中心，小圆(X⁺)内切于大圆内部
-                // β⁻带负电，速度向右；反冲核带正电，速度向左
                 createBetaParticleCenter('β⁻', -1, '#2a7faa', +1, B_sign, BIG_RADIUS);
                 createSmallParticleInner('X⁺', +5, '#c07a3a', -1, B_sign, BETA_SMALL_R, BIG_RADIUS);
             }
             draw();
         }
 
-        /**
-         * α衰变: 大圆(α)圆心固定在画布正中心
-         * 物理角速度由电荷、磁场方向决定
-         */
         function createAlphaParticleCenter(label, q, color, dir, B_sign, R) {
             const omega = q * B_sign * K;
-            
-            // 大圆圆心 = 画布中心
             const cx = centerX;
             const cy = centerY;
-            
-            // 初始位置: 衰变点 = 圆心正右方 (因为α速度向右，从圆心向右出发)
-            // 但衰变点实际上是母核位置，母核在圆心？不，物理上母核衰变时粒子从母核位置飞出
-            // 为了让大圆圆心在窗口中心且衰变点在圆周上，我们将衰变点设在大圆最右侧
-            // 这样圆心(centerX, centerY)到衰变点距离 = R，且衰变点 = (centerX + R, centerY)
-            // 初始角度 = 0 (从圆心指向右侧)
-            const initAngle = 0; // 角度0度 → 圆最右侧点
+            const initAngle = 0; 
             
             particles.push({
-                label, q, color,
-                R: R,
-                omega: omega,
-                cx: cx,
-                cy: cy,
-                angle: initAngle,
-                initialAngle: initAngle,
-                dir: dir,
-                speedScale: 1.3,
-                isBig: true
+                label, q, color, R: R, omega: omega, cx: cx, cy: cy,
+                angle: initAngle, initialAngle: initAngle, dir: dir, speedScale: 1.3, isBig: true
             });
         }
 
-        /**
-         * β⁻衰变: 大圆(β⁻)圆心固定在画布正中心
-         */
         function createBetaParticleCenter(label, q, color, dir, B_sign, R) {
             const omega = q * B_sign * K;
-            
-            // 大圆圆心 = 画布中心
             const cx = centerX;
             const cy = centerY;
-            
-            // β⁻速度向右，从圆心正右方出发
             const initAngle = 0;
             
             particles.push({
-                label, q, color,
-                R: R,
-                omega: omega,
-                cx: cx,
-                cy: cy,
-                angle: initAngle,
-                initialAngle: initAngle,
-                dir: dir,
-                speedScale: 1.3,
-                isBig: true
+                label, q, color, R: R, omega: omega, cx: cx, cy: cy,
+                angle: initAngle, initialAngle: initAngle, dir: dir, speedScale: 1.3, isBig: true
             });
         }
 
-        /**
-         * 外切小圆 (α衰变反冲核)
-         * 小圆与大圆外切，切点即衰变点(大圆最右侧)
-         * 小圆圆心位于大圆圆心右侧 (大圆半径 + 小圆半径) 处
-         * 速度方向向左 (dir = -1)
-         */
         function createSmallParticleOuter(label, q, color, dir, B_sign, smallR, bigR) {
             const omega = q * B_sign * K;
-            
-            // 外切: 小圆圆心在大圆圆心右侧 (bigR + smallR) 处
             const cx = centerX + bigR + smallR;
-            const cy = centerY;  // 同一水平线
-            
-            // 衰变点 = 大圆最右侧 = (centerX + bigR, centerY)
-            // 从小圆圆心指向衰变点的向量 = 从(cx, cy)指向(centerX+bigR, centerY)
-            // 该向量方向 = 向左 (dx负)
-            const dx = (centerX + bigR) - cx;  // 应为 -smallR
-            const dy = centerY - cy;           // 0
+            const cy = centerY;  
+            const dx = (centerX + bigR) - cx;  
+            const dy = centerY - cy;           
             let initAngle = Math.atan2(dy, dx);
             
             particles.push({
-                label, q, color,
-                R: smallR,
-                omega: omega,
-                cx: cx,
-                cy: cy,
-                angle: initAngle,
-                initialAngle: initAngle,
-                dir: dir,
-                speedScale: 1.3,
-                isBig: false
+                label, q, color, R: smallR, omega: omega, cx: cx, cy: cy,
+                angle: initAngle, initialAngle: initAngle, dir: dir, speedScale: 1.3, isBig: false
             });
         }
 
-        /**
-         * 内切小圆 (β⁻衰变反冲核)
-         * 小圆与大圆内切，切点即衰变点(大圆最右侧)
-         * 小圆圆心位于大圆圆心右侧 (大圆半径 - 小圆半径) 处
-         * 速度方向向左 (dir = -1)
-         */
         function createSmallParticleInner(label, q, color, dir, B_sign, smallR, bigR) {
             const omega = q * B_sign * K;
-            
-            // 内切: 小圆圆心在大圆圆心右侧 (bigR - smallR) 处
             const cx = centerX + bigR - smallR;
             const cy = centerY;
-            
-            // 衰变点 = 大圆最右侧 = (centerX + bigR, centerY)
-            // 从小圆圆心指向衰变点的向量 = 从(cx, cy)指向(centerX+bigR, centerY)
-            // 方向向右 (dx正)
-            const dx = (centerX + bigR) - cx;  // 应为 +smallR
-            const dy = centerY - cy;           // 0
+            const dx = (centerX + bigR) - cx;  
+            const dy = centerY - cy;           
             let initAngle = Math.atan2(dy, dx);
             
             particles.push({
-                label, q, color,
-                R: smallR,
-                omega: omega,
-                cx: cx,
-                cy: cy,
-                angle: initAngle,
-                initialAngle: initAngle,
-                dir: dir,
-                speedScale: 1.3,
-                isBig: false
+                label, q, color, R: smallR, omega: omega, cx: cx, cy: cy,
+                angle: initAngle, initialAngle: initAngle, dir: dir, speedScale: 1.3, isBig: false
             });
         }
 
-        // ---------- 绘图 ----------
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 磁场背景符号
             ctx.font = "bold 32px 'Segoe UI', 'Arial Black', sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             for(let i=50; i<canvas.width; i+=80) {
                 for(let j=50; j<canvas.height; j+=80) {
                     if (magneticDir === 'in') {
-                        ctx.fillStyle = "#2c4c6b";
-                        ctx.fillText("×", i, j);
-                        ctx.fillStyle = "#1f3a57";
-                        ctx.fillText("×", i-1, j-1);
-                        ctx.fillStyle = "#3c647e";
-                        ctx.fillText("×", i, j);
+                        ctx.fillStyle = "#2c4c6b"; ctx.fillText("×", i, j);
+                        ctx.fillStyle = "#1f3a57"; ctx.fillText("×", i-1, j-1);
+                        ctx.fillStyle = "#3c647e"; ctx.fillText("×", i, j);
                     } else {
-                        ctx.fillStyle = "#2c5e6b";
-                        ctx.font = "bold 36px 'Segoe UI', 'Arial Black'";
-                        ctx.fillText("·", i, j);
-                        ctx.fillStyle = "#1e4752";
-                        ctx.fillText("·", i-1, j-2);
-                        ctx.fillStyle = "#367a8c";
-                        ctx.fillText("·", i, j);
+                        ctx.fillStyle = "#2c5e6b"; ctx.font = "bold 36px 'Segoe UI', 'Arial Black'"; ctx.fillText("·", i, j);
+                        ctx.fillStyle = "#1e4752"; ctx.fillText("·", i-1, j-2);
+                        ctx.fillStyle = "#367a8c"; ctx.fillText("·", i, j);
                     }
                 }
             }
             ctx.font = "14px 'Segoe UI'";
 
-            // 衰变点 (母核位置) 位于大圆最右侧
             const decayX = centerX + BIG_RADIUS;
             const decayY = centerY;
             
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = "rgba(0,0,0,0.2)";
-            ctx.fillStyle = "#0f2a3f";
-            ctx.beginPath();
-            ctx.arc(decayX, decayY, 6, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = "#f9fbfd";
-            ctx.beginPath();
-            ctx.arc(decayX, decayY, 3, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.shadowBlur = 8; ctx.shadowColor = "rgba(0,0,0,0.2)";
+            ctx.fillStyle = "#0f2a3f"; ctx.beginPath(); ctx.arc(decayX, decayY, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0; ctx.fillStyle = "#f9fbfd"; ctx.beginPath(); ctx.arc(decayX, decayY, 3, 0, Math.PI * 2); ctx.fill();
 
-            // 绘制粒子
             particles.forEach(p => {
-                // 加粗圆周轨迹虚线
                 ctx.beginPath();
                 ctx.arc(p.cx, p.cy, p.R, 0, Math.PI * 2);
                 ctx.strokeStyle = p.color + '80';
@@ -378,25 +310,16 @@
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                // 粒子当前位置
                 const x = p.cx + p.R * Math.cos(p.angle);
                 const y = p.cy + p.R * Math.sin(p.angle);
 
-                // 粒子阴影
-                ctx.shadowBlur = 12;
-                ctx.shadowColor = "rgba(0,0,0,0.25)";
-                ctx.beginPath();
-                ctx.arc(x, y, 10, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.fill();
+                ctx.shadowBlur = 12; ctx.shadowColor = "rgba(0,0,0,0.25)";
+                ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
                 ctx.shadowBlur = 0;
 
-                // 粒子标签
-                ctx.fillStyle = "#1a293b";
-                ctx.font = "bold 15px 'Segoe UI', Arial";
+                ctx.fillStyle = "#1a293b"; ctx.font = "bold 15px 'Segoe UI', Arial";
                 ctx.fillText(p.label, x + 16, y - 18);
                 
-                // 速度方向箭头 - 纯黑色
                 let velAngle;
                 if (p.omega > 0) velAngle = p.angle + Math.PI/2;
                 else velAngle = p.angle - Math.PI/2;
@@ -405,34 +328,22 @@
                 const arrowX = x + arrowLen * Math.cos(velAngle);
                 const arrowY = y + arrowLen * Math.sin(velAngle);
                 
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(arrowX, arrowY);
-                ctx.strokeStyle = "#000000";
-                ctx.lineWidth = 3.0;
-                ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(arrowX, arrowY); ctx.strokeStyle = "#000000"; ctx.lineWidth = 3.0; ctx.stroke();
                 
-                ctx.fillStyle = "#000000";
-                ctx.beginPath();
-                ctx.moveTo(arrowX, arrowY);
+                ctx.fillStyle = "#000000"; ctx.beginPath(); ctx.moveTo(arrowX, arrowY);
                 ctx.lineTo(arrowX - 8 * Math.cos(velAngle - 0.4), arrowY - 8 * Math.sin(velAngle - 0.4));
                 ctx.lineTo(arrowX - 8 * Math.cos(velAngle + 0.4), arrowY - 8 * Math.sin(velAngle + 0.4));
-                ctx.closePath();
-                ctx.fill();
+                ctx.closePath(); ctx.fill();
             });
         }
 
-        // 动画循环
         function update() {
             if (!isAnimating) return;
-            particles.forEach(p => {
-                p.angle += p.omega;
-            });
+            particles.forEach(p => { p.angle += p.omega; });
             draw();
             requestAnimationFrame(update);
         }
 
-        // 事件监听
         document.getElementById('startBtn').onclick = () => { isAnimating = true; update(); };
         document.getElementById('resetBtn').onclick = () => { isAnimating = false; initSimulation(); };
         
@@ -443,32 +354,11 @@
             r.onchange = (e) => { decayType = e.target.value; initSimulation(); };
         });
 
-        // 启动
         initSimulation();
     })();
 </script>
-    <!-- Dify 智能助手配置>
-<script>
-window.difyChatbotConfig = {
-    token: 'tq9kTBjTtodbaZvA',
-    inputs: {
-        current_exp: "衰变"
-    },
-    systemVariables: {
-        user_id: "exp_hydrogen_spectrum"   // 每个实验设置唯一 user_id，对话自动隔离
-    },
-    userVariables: {}
-};
-</script>
+
 <script src="https://udify.app/embed.min.js" id="tq9kTBjTtodbaZvA" defer></script>
-<style>
-    #dify-chatbot-bubble-button {
-        background-color: #FFB6C1 !important;
-    }
-    #dify-chatbot-bubble-window {
-        width: 24rem !important;
-        height: 40rem !important;
-    }
-</style>
+
 </body>
 </html>
