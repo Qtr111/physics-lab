@@ -225,30 +225,7 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
-        /* 🤖 优化后的 Dify 智能体样式覆盖 */
-        body #dify-chatbot-bubble-button {
-            background-color: #FFB6C1 !important;
-            z-index: 9999 !important; /* 确保不被画布遮挡 */
-        }
-        body #dify-chatbot-bubble-window {
-            width: 24rem !important;
-            height: 40rem !important;
-            z-index: 9999 !important;
-        }
-    </style>
-
-    <script>
-        window.difyChatbotConfig = {
-            token: 'tq9kTBjTtodbaZvA',
-            inputs: {
-                current_exp: "带电粒子在匀强磁场中的运动"
-            },
-            systemVariables: {
-                user_id: "exp_hydrogen_spectrum" 
-            },
-            userVariables: {}
-        };
-    </script>
+      
 </head>
 <body>
 
@@ -512,6 +489,29 @@
 </script>
 
 <script src="https://udify.app/embed.min.js" id="tq9kTBjTtodbaZvA" defer></script>
+  /* 🤖 优化后的 Dify 智能体样式覆盖 */
+        body #dify-chatbot-bubble-button {
+            background-color: #FFB6C1 !important;
+            z-index: 9999 !important; /* 确保不被画布遮挡 */
+        }
+        body #dify-chatbot-bubble-window {
+            width: 24rem !important;
+            height: 40rem !important;
+            z-index: 9999 !important;
+        }
+    </style>
 
+    <script>
+        window.difyChatbotConfig = {
+            token: 'tq9kTBjTtodbaZvA',
+            inputs: {
+                current_exp: "带电粒子在匀强磁场中的运动"
+            },
+            systemVariables: {
+                user_id: "exp_hydrogen_spectrum" 
+            },
+            userVariables: {}
+        };
+    </script>
 </body>
 </html>
