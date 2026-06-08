@@ -13,24 +13,14 @@
             --text-main: #f1f5f9;
         }
 
-        /* 修复核心：保持 body 清洁，避免动态注入的智能体变成 flex 子项 */
         body {
             font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
             background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
             margin: 0;
-            padding: 0;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            color: var(--text-main);
-        }
-
-        /* 将原先 body 的布局转移到独立的视口容器中 */
-        .app-container {
             padding: 20px;
+            color: var(--text-main);
             height: 100vh;
-            width: 100vw;
-            box-sizing: border-box;
+            overflow: hidden;
         }
 
         .lab-wrapper {
@@ -45,411 +35,397 @@
             width: 340px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 15px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        /* 磨砂玻璃卡片 */
+        .p-card {
             background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            padding: 25px;
-            border-radius: 20px;
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border-left: 5px solid var(--neon-blue);
+            transition: all 0.3s;
         }
 
-        h2 {
-            margin: 0 0 10px 0;
-            font-size: 1.5rem;
+        .p-card:hover {
+            border-left-width: 10px;
+            transform: translateX(5px);
+            background: rgba(30, 41, 59, 0.9);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+            font-weight: bold;
             color: var(--neon-blue);
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
-            letter-spacing: 2px;
         }
 
-        .control-item {
+        /* 参数行优化 */
+        .ctrl-row {
+            margin: 12px 0;
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
 
-        .label-val {
+        .ctrl-label-group {
             display: flex;
             justify-content: space-between;
-            font-size: 0.9rem;
+            align-items: flex-end;
+            font-size: 15px;
             color: #94a3b8;
         }
 
-        .label-val span:last-child {
-            color: var(--neon-blue);
-            font-family: monospace;
+        .val-display {
+            font-size: 24px; /* 进一步增大字号 */
+            font-family: 'Consolas', 'Courier New', monospace;
             font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 12px var(--neon-blue);
         }
 
-        input[type="range"] {
+        /* 滑动条样式 */
+        input[type=range] {
+            appearance: none;
             width: 100%;
-            accent-color: var(--neon-blue);
+            height: 6px;
+            background: #334155;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--neon-blue);
+            border-radius: 50%;
             cursor: pointer;
+            box-shadow: 0 0 10px var(--neon-blue);
         }
 
-        .radio-group {
-            display: flex;
-            gap: 20px;
-            margin-top: 5px;
-        }
-
-        .radio-group label {
+        /* 按钮 */
+        .btn {
+            border: none;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-weight: bold;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.95rem;
+            transition: 0.3s;
         }
 
-        .btn-stack {
+        .btn-add {
+            background: transparent;
+            border: 1px dashed var(--neon-green);
+            color: var(--neon-green);
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .btn-add:hover {
+            background: rgba(74, 222, 128, 0.1);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+        }
+
+        .btn-fire {
+            background: var(--neon-blue);
+            color: #000;
+            flex-grow: 1;
+            font-size: 15px;
+        }
+
+        .btn-fire:hover {
+            box-shadow: 0 0 20px var(--neon-blue);
+            background: #7dd3fc;
+        }
+
+        /* 画布中心 */
+        .center-area {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-top: auto;
-        }
-
-        button {
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.95rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 18px rgba(2, 132, 199, 0.4);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: #cbd5e1;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        .btn-danger {
-            background: transparent;
-            color: #f87171;
-            border: 1px solid rgba(248, 113, 113, 0.3);
-        }
-
-        .btn-danger:hover {
-            background: rgba(248, 113, 113, 0.1);
-            border-color: #f87171;
-        }
-
-        /* 主视口区域 */
-        .stage-container {
-            flex: 1;
-            position: relative;
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
-            overflow: hidden;
+            gap: 20px;
+            align-items: center;
         }
 
         canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
+            background: #000;
+            border: 2px solid #334155;
+            border-radius: 16px;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
         }
 
-        /* 🤖 优化后的 Dify 智能体样式强制保护 */
-        #dify-chatbot-bubble-button {
-            background-color: var(--neon-blue) !important;
-            position: fixed !important;
-            bottom: 20px !important;
-            right: 20px !important;
-            z-index: 999999 !important;
+        /* 顶部控制栏 */
+        .hud-bar {
+            width: 100%;
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
         }
-        #dify-chatbot-bubble-window {
-            position: fixed !important;
-            bottom: 90px !important;
-            right: 20px !important;
-            z-index: 999999 !important;
+
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .hud-val {
+            font-size: 26px;
+            font-family: monospace;
+            color: var(--neon-green);
+            text-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .hud-label {
+            font-size: 14px;
+            color: #94a3b8;
+            font-weight: bold;
+        }
+
+        select {
+            background: #0f172a;
+            color: white;
+            border: 1px solid #334155;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 13px;
         }
     </style>
-
-    <script>
-        window.difyChatbotConfig = {
-            token: 'tq9kTBjTtodbaZvA',
-            inputs: {
-                current_exp: "速度选择器仿真模型（复合正交电磁场）"
-            },
-            systemVariables: {
-                user_id: "exp_velocity_selector" // 设立独立的对话隔离标识
-            },
-            userVariables: {}
-        };
-    </script>
 </head>
 <body>
 
-<div class="app-container">
     <div class="lab-wrapper">
-        <div class="side-panel">
-            <h2>速度选择器</h2>
-            
-            <div class="control-item">
-                <div class="label-val">
-                    <span>电场强度 (E)</span>
-                    <span id="v-E">50</span>
-                </div>
-                <input type="range" id="sl-E" min="10" max="100" value="50">
-            </div>
-
-            <div class="control-item">
-                <div class="label-val">
-                    <span>磁感应强度 (B)</span>
-                    <span id="v-B">25</span>
-                </div>
-                <input type="range" id="sl-B" min="10" max="100" value="25">
-            </div>
-
-            <div class="control-item">
-                <div class="label-val">
-                    <span>入射初速度 (v)</span>
-                    <span id="v-v">40</span>
-                </div>
-                <input type="range" id="sl-v" min="10" max="80" value="40">
-            </div>
-
-            <div class="control-item">
-                <div class="label-val"><span>粒子电性</span></div>
-                <div class="radio-group">
-                    <label><input type="radio" name="charge" value="1" checked><span style="color:var(--neon-red)">正电荷</span></label>
-                    <label><input type="radio" name="charge" value="-1"><span style="color:var(--neon-blue)">负电荷</span></label>
-                </div>
-            </div>
-
-            <div class="btn-stack">
-                <button id="btn-fire" class="btn-primary">🚀 单次发射</button>
-                <button id="btn-stream" class="btn-secondary">🌊 粒子束连续发射</button>
-                <button id="btn-scatter" class="btn-secondary">💥 喷射发散粒子束</button>
-                <button id="btn-clear" class="btn-danger">🧹 擦除轨迹</button>
-            </div>
+        <div class="side-panel" id="left-panel">
+            <button class="btn btn-add" onclick="addNewParticle()">+ 初始化新粒子</button>
         </div>
 
-        <div class="stage-container" id="stage">
-            <canvas id="labCanvas"></canvas>
+        <div class="center-area">
+            <div class="hud-bar">
+                <div class="hud-item">
+                    <span class="hud-label">电场强度 E</span>
+                    <input type="range" id="env-e" min="0" max="200" step="10" value="100">
+                    <span class="hud-val" id="env-e-v">100</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">磁场强度 B</span>
+                    <input type="range" id="env-b" min="1" max="20" step="1" value="10">
+                    <span class="hud-val" id="env-b-v">10</span>
+                </div>
+                <div class="hud-item" style="flex-direction: row; gap: 15px;">
+                    <button class="btn" style="background:#64748b; color:white; min-width:100px;" id="pause-btn">暂停系统</button>
+                    <button class="btn" style="background:#ef4444; color:white;" onclick="location.reload()">重启实验</button>
+                </div>
+            </div>
+
+            <canvas id="canvas" width="900" height="550"></canvas>
         </div>
+
+        <div class="side-panel" id="right-panel"></div>
     </div>
-</div>
 
 <script>
-    const canvas = document.getElementById('labCanvas');
+    const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const stage = document.getElementById('stage');
-
-    // 适配高分辨率屏幕
-    function resize() {
-        canvas.width = stage.clientWidth;
-        canvas.height = stage.clientHeight;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    // 核心物理参数配置
-    const cfg = {
-        topY: 150,
-        bottomY: 450,
-        gateX: 750,
-        gateSize: 24,
-        zoom: 0.16,          
-        sensitivity: 0.85   
-    };
-
     let particles = [];
-    let isStreamActive = false;
-    let streamTimer = null;
+    let isPaused = false;
+    let particleCounter = 0;
 
-    // UI 绑定
-    const bindSlider = (id, valId) => {
-        const sl = document.getElementById(id);
-        const v = document.getElementById(valId);
-        sl.addEventListener('input', () => v.innerText = sl.value);
-        return sl;
+    const cfg = {
+        topY: 80, bottomY: 470,
+        leftX: 120, rightX: 780,
+        zoom: 22,
+        sensitivity: 2.8
     };
 
-    const slE = bindSlider('sl-E', 'v-E');
-    const slB = bindSlider('sl-B', 'v-B');
-    const slv = bindSlider('sl-v', 'v-v');
+    const envE = document.getElementById('env-e');
+    const envB = document.getElementById('env-b');
+    envE.oninput = () => document.getElementById('env-e-v').innerText = envE.value;
+    envB.oninput = () => document.getElementById('env-b-v').innerText = envB.value;
 
-    function getSelectedCharge() {
-        return parseFloat(document.querySelector('input[name="charge"]:checked').value);
+    function addNewParticle() {
+        particleCounter++;
+        const pId = 'p' + Date.now();
+        const color = `hsl(${Math.random() * 360}, 85%, 65%)`;
+        
+        const pObj = {
+            id: pId, name: `粒子探测器 #${particleCounter.toString().padStart(2, '0')}`,
+            x: 50, y: 275, vx: 10.0, vy: 0,
+            q: 1, m: 1, side: 'left',
+            color: color, history: [],
+            isFlying: false, active: true
+        };
+        particles.push(pObj);
+        renderCard(pObj);
     }
 
-    class Particle {
-        constructor(vx, q, customColor = null, side = 'left') {
-            this.side = side; 
-            this.x = this.side === 'left' ? 50 : canvas.width - 50;
-            this.y = (cfg.topY + cfg.bottomY) / 2;
-            this.vx = vx;
-            this.vy = 0;
-            this.q = q;
-            this.m = 1.0; 
-            this.active = true;
-            this.history = [];
-            this.color = customColor || (q > 0 ? varColor('--neon-red') : varColor('--neon-blue'));
+    function renderCard(p) {
+        const card = document.createElement('div');
+        card.className = 'p-card';
+        card.id = 'card-' + p.id;
+        card.style.borderLeftColor = p.color;
+        
+        card.innerHTML = `
+            <div class="card-header">
+                <span>${p.name}</span>
+                <button class="btn" style="background:transparent; color:#ef4444; font-size:20px; padding:0" onclick="removeP('${p.id}')">×</button>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-label-group"><span>初速度 V</span><span class="val-display" id="val-vx-${p.id}">10.0</span></div>
+                <input type="range" min="8" max="12" step="0.2" value="10.0" oninput="updateP('${p.id}','vx',this.value)">
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-label-group"><span>电荷量 Q</span><span class="val-display" id="val-q-${p.id}">1</span></div>
+                <input type="range" min="-3" max="3" step="1" value="1" oninput="updateP('${p.id}','q',this.value)">
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-label-group"><span>质量 M</span><span class="val-display" id="val-m-${p.id}">1.0</span></div>
+                <input type="range" min="0.1" max="5" step="0.1" value="1" oninput="updateP('${p.id}','m',this.value)">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <select onchange="updateP('${p.id}','side',this.value)">
+                    <option value="left">左侧入口</option>
+                    <option value="right">右侧入口</option>
+                </select>
+                <button class="btn btn-fire" id="fire-${p.id}" onclick="fireP('${p.id}')">启动发射</button>
+            </div>
+        `;
+        const target = (particleCounter % 2 !== 0) ? 'left-panel' : 'right-panel';
+        document.getElementById(target).appendChild(card);
+    }
+
+    function updateP(id, prop, val) {
+        const p = particles.find(i => i.id === id);
+        if(!p) return;
+        if(prop === 'side') p.side = val;
+        else p[prop] = parseFloat(val);
+        
+        const displaySpan = document.getElementById(`val-${prop}-${id}`);
+        if(displaySpan) displaySpan.innerText = (prop==='q') ? val : parseFloat(val).toFixed(1);
+        resetP(p);
+    }
+
+    function fireP(id) {
+        const p = particles.find(i => i.id === id);
+        if(p) { p.isFlying = true; document.getElementById('fire-'+id).innerText = "重置待发"; }
+    }
+
+    function resetP(p) {
+        p.active = true; p.isFlying = false; p.history = []; p.vy = 0;
+        p.x = p.side === 'left' ? 50 : canvas.width - 50;
+        p.y = 275;
+        const btn = document.getElementById('fire-'+p.id);
+        if(btn) btn.innerText = "启动发射";
+    }
+
+    function removeP(id) {
+        particles = particles.filter(i => i.id !== id);
+        const card = document.getElementById('card-' + id);
+        if(card) card.remove();
+    }
+
+    function drawArrow(x, y1, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x, y1); ctx.lineTo(x, y2);
+        ctx.strokeStyle = "rgba(248, 113, 113, 0.4)";
+        ctx.setLineDash([15, 8]);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(248, 113, 113, 0.8)";
+        ctx.beginPath();
+        ctx.moveTo(x - 12, y2 - 20); ctx.lineTo(x + 12, y2 - 20); ctx.lineTo(x, y2);
+        ctx.fill();
+    }
+
+    function mainLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 极板绘制
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "rgba(56, 189, 248, 0.5)";
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(cfg.leftX, cfg.topY-10, cfg.rightX - cfg.leftX, 10);
+        ctx.fillRect(cfg.leftX, cfg.bottomY, cfg.rightX - cfg.leftX, 10);
+        ctx.shadowBlur = 0;
+
+        // 场区绘制
+        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+        ctx.fillRect(cfg.leftX, cfg.topY, cfg.rightX - cfg.leftX, cfg.bottomY - cfg.topY);
+        
+        // 电场线
+        for(let x = cfg.leftX + 60; x < cfg.rightX; x += 120) drawArrow(x, cfg.topY, cfg.bottomY);
+
+        // 磁场绘制
+        ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
+        ctx.font = "bold 28px Arial";
+        for(let x = cfg.leftX + 40; x < cfg.rightX; x += 80) {
+            for(let y = cfg.topY + 50; y < cfg.bottomY; y += 80) ctx.fillText("×", x, y);
         }
 
-        update(dt, E, B) {
-            if(!this.active) return;
+        const E = parseFloat(envE.value);
+        const B = parseFloat(envB.value);
 
-            // 进入复合场区域
-            const leftBound = 150;
-            const rightBound = cfg.gateX;
-            if(this.x >= leftBound && this.x <= rightBound) {
-                // 经典洛伦兹力与电场力正交叠加运动学方程
-                const realVx = this.side === 'left' ? this.vx : -this.vx;
-                const ay = ((this.q * E - this.q * realVx * B) / this.m) * cfg.sensitivity;
-                this.vy += ay * dt;
-            }
-            const dir = this.side === 'left' ? this.vx : -this.vx;
-            this.x += dir * dt * cfg.zoom;
-            this.y += this.vy * dt * cfg.zoom;
-            this.history.push({x: this.x, y: this.y});
-
-            // 越界与挡板碰撞判定
-            if(this.y <= cfg.topY || this.y >= cfg.bottomY || this.x < 0 || p => this.x > canvas.width) {
-                this.active = false;
-            }
-
-            // 右侧挡板物理隔离隔离判断
-            if(this.side === 'left' && this.x >= cfg.gateX) {
-                const midY = (cfg.topY + cfg.bottomY) / 2;
-                if(Math.abs(this.y - midY) > cfg.gateSize / 2) {
-                    this.active = false; 
+        particles.forEach(p => {
+            if (!isPaused && p.isFlying && p.active) {
+                const dt = 0.012;
+                if (p.x >= cfg.leftX && p.x <= cfg.rightX) {
+                    const realVx = p.side === 'left' ? p.vx : -p.vx;
+                    const ay = ((p.q * E - p.q * realVx * B) / p.m) * cfg.sensitivity;
+                    p.vy += ay * dt;
                 }
-            }
-        }
+                const dir = p.side === 'left' ? p.vx : -p.vx;
+                p.x += dir * dt * cfg.zoom;
+                p.y += p.vy * dt * cfg.zoom;
+                p.history.push({x: p.x, y: p.y});
 
-        draw() {
-            if(this.history.length > 0) {
+                if(p.y <= cfg.topY || p.y >= cfg.bottomY || p.x < 0 || p.x > canvas.width) p.active = false;
+            }
+
+            // 轨迹绘制
+            if(p.history.length > 0) {
                 ctx.shadowBlur = 10;
-                ctx.shadowColor = this.color;
+                ctx.shadowColor = p.color;
                 ctx.beginPath();
-                ctx.strokeStyle = this.color;
+                ctx.strokeStyle = p.color;
                 ctx.lineWidth = 4;
-                this.history.forEach((pos, i) => i === 0 ? ctx.moveTo(pos.x, pos.y) : ctx.lineTo(pos.x, pos.y));
+                p.history.forEach((pos, i) => i === 0 ? ctx.moveTo(pos.x, pos.y) : ctx.lineTo(pos.x, pos.y));
                 ctx.stroke();
                 ctx.shadowBlur = 0;
             }
 
+            // 粒子绘制
             ctx.beginPath();
-            ctx.arc(this.x, this.y, 9, 0, Math.PI*2);
-            ctx.fillStyle = this.active ? '#ffffff' : this.color + '44';
+            ctx.arc(p.x, p.y, 9, 0, Math.PI*2);
+            ctx.fillStyle = p.color;
             ctx.fill();
-        }
-    }
-
-    function varColor(name) {
-        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    }
-
-    function drawScene() {
-        // 绘制偏转极板几何形态
-        ctx.fillStyle = 'rgba(51, 65, 85, 0.5)';
-        ctx.fillRect(150, cfg.topY - 15, cfg.gateX - 150, 15);
-        ctx.fillRect(150, cfg.bottomY, cfg.gateX - 150, 15);
-
-        // 极板符号标识
-        ctx.fillStyle = varColor('--neon-red');
-        ctx.font = 'bold 16px sans-serif';
-        for(let x = 180; x < cfg.gateX; x += 60) ctx.fillText('+', x, cfg.topY - 4);
-        ctx.fillStyle = varColor('--neon-blue');
-        for(let x = 180; x < cfg.gateX; x += 60) ctx.fillText('-', x, cfg.bottomY + 13);
-
-        // 右侧狭缝挡板
-        ctx.fillStyle = '#475569';
-        const midY = (cfg.topY + cfg.bottomY) / 2;
-        ctx.fillRect(cfg.gateX, cfg.topY, 15, midY - cfg.gateSize/2 - cfg.topY);
-        ctx.fillRect(cfg.gateX, midY + cfg.gateSize/2, 15, cfg.bottomY - (midY + cfg.gateSize/2));
-
-        // 磁场背景符号 (×) 动态平铺
-        ctx.fillStyle = 'rgba(255,255,255,0.03)';
-        ctx.font = '14px monospace';
-        for(let lx = 170; lx < cfg.gateX; lx += 30) {
-            for(let ly = cfg.topY + 20; ly < cfg.bottomY; ly += 30) {
-                ctx.fillText('×', lx, ly);
-            }
-        }
-    }
-
-    // 引擎主循环
-    let lastTime = performance.now();
-    function loop(now) {
-        const dt = Math.min(now - lastTime, 30);
-        lastTime = now;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawScene();
-
-        const currentE = parseFloat(slE.value);
-        const currentB = parseFloat(slB.value);
-
-        particles.forEach(p => {
-            p.update(dt, currentE, currentB);
-            p.draw();
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 2;
+            ctx.stroke();
         });
 
-        requestAnimationFrame(loop);
+        requestAnimationFrame(mainLoop);
     }
-    requestAnimationFrame(loop);
 
-    // 交互动作控制
-    document.getElementById('btn-fire').onclick = () => {
-        particles.push(new Particle(parseFloat(slv.value), getSelectedCharge()));
+    document.getElementById('pause-btn').onclick = function() {
+        isPaused = !isPaused;
+        this.innerText = isPaused ? "继续实验" : "暂停系统";
     };
 
-    const streamBtn = document.getElementById('btn-stream');
-    streamBtn.onclick = () => {
-        isStreamActive = !isStreamActive;
-        if(isStreamActive) {
-            streamBtn.innerText = '🛑 停止连续发射';
-            streamBtn.style.background = 'linear-gradient(135deg, #b45309 0%, #92400e 100%)';
-            streamTimer = setInterval(() => {
-                particles.push(new Particle(parseFloat(slv.value), getSelectedCharge()));
-            }, 200);
-        } else {
-            streamBtn.innerText = '🌊 粒子束连续发射';
-            streamBtn.style.background = 'rgba(255, 255, 255, 0.05)';
-            clearInterval(streamTimer);
-        }
-    };
-
-    document.getElementById('btn-scatter').onclick = () => {
-        const centerV = parseFloat(slv.value);
-        const q = getSelectedCharge();
-        // 一键高斯扩散或线性排布发射多条不同速度粒子
-        for(let i = -4; i <= 4; i++) {
-            const spreadV = centerV + i * 6;
-            if(spreadV > 0) {
-                let color = null;
-                if(i === 0) color = '#facc15'; // 完美准直中心速度黄色高亮
-                particles.push(new Particle(spreadV, q, color));
-            }
-        }
-    };
-
-    document.getElementById('btn-clear').onclick = () => particles = [];
+    mainLoop();
 </script>
-
-<script src="https://udify.app/embed.min.js" id="tq9kTBjTtodbaZvA" defer></script>
-
 </body>
 </html>
