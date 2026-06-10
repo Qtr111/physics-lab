@@ -1600,5 +1600,28 @@
         // 页面加载完成后初始化
         window.addEventListener('DOMContentLoaded', init);
     </script>
+       <!-- Dify 智能助手配置 - 使用 user_id 隔离实验，不传 conversation_id 避免报错 -->
+    <script>
+    window.difyChatbotConfig = {
+        token: 'tq9kTBjTtodbaZvA',
+        inputs: {
+            current_exp: "通电长直导线产生的磁场"
+        },
+        systemVariables: {
+            user_id: "exp_wave_interference"   // 每个实验唯一 user_id，对话自动隔离
+        },
+        userVariables: {}
+    };
+    </script>
+    <script src="https://udify.app/embed.min.js" id="tq9kTBjTtodbaZvA" defer></script>
+    <style>
+        #dify-chatbot-bubble-button {
+            background-color: #FFB6C1 !important;
+        }
+        #dify-chatbot-bubble-window {
+            width: 24rem !important;
+            height: 40rem !important;
+        }
+    </style>
 </body>
 </html>
