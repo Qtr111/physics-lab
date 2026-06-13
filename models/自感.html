@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>自感现象</title>
+    <style>
+        :root {
+            --accent-color: #00f2ff;
+            --mag-color: #00ffaa;
+            --panel-bg: rgba(20, 20, 25, 0.98);
+        }
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%);
+            color: #fff; display: flex; flex-direction: column; align-items: center;
+            padding: 20px; margin: 0; overflow: hidden;
+        }
+        h2 {
+            font-weight: 400; letter-spacing: 8px; color: var(--accent-color);
+            text-shadow: 0 0 20px rgba(0, 242, 255, 0.4); margin: 10px 0 20px 0;
+        }
+        canvas {
+            background-color: #080808; border: 1px solid #2a2a2a; border-radius: 12px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.9);
+        }
+        .control-panel {
+            margin-top: 25px; background: var(--panel-bg); padding: 12px 40px;
+            border-radius: 60px; display: flex; gap: 40px; border: 1px solid #3a3a4a;
+        }
+        button {
+            padding: 10px 30px; font-size: 15px; font-weight: 600; color: #fff;
+            border: none; border-radius: 30px; cursor: pointer; transition: 0.3s;
+            letter-spacing: 1px;
+        }
+        #switchBtn { background: #444; border: 1px solid #666; }
+        #switchBtn.on { background: #00ff88; color: #000; box-shadow: 0 0 20px rgba(0, 255, 136, 0.4); }
+        #speedBtn { background: #0066ff; }
+        #speedBtn.slow { background: #ffaa00; color: #000; }
+        button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    </style>
+</head>
+<body>
+
+    <h2>自感现象</h2>
+    <canvas id="simCanvas" width="900" height="550"></canvas>
+    
+    <div class="control-panel">
+        <button id="switchBtn" onclick="toggleSwitch()">电源：关闭</button>
+        <button id="speedBtn" onclick="toggleSpeed()">模式：正常速度</button>
+    </div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let isClosed = false, isSlowMo = false, flowOffset = 0, magOffset = 0; 
+    const V = 15, R_branch = 8, L_val = 650, dt_base = 0.6; 
+    let i_L = 0, i_1 = 0, i_2 = 0; 
+
+    function toggleSwitch() {
+        isClosed = !isClosed;
+        document.getElementById('switchBtn').innerText = isClosed ? "电源：开启" : "电源：关闭";
+        document.getElementById('switchBtn').className = isClosed ? "on" : "";
+    }
+
+    function toggleSpeed() {
+        isSlowMo = !isSlowMo;
+        document.getElementById('speedBtn').innerText = isSlowMo ? "模式：慢动作" : "模式：正常速度";
+        document.getElementById('speedBtn').className = isSlowMo ? "slow" : "";
+    }
+
+    function updatePhysics() {
+        let currentDt = isSlowMo ? dt_base * 0.4 : dt_base;
+        if (isClosed) {
+            i_1 = V / R_branch;
+            let di = (V - i_L * R_branch) / L_val * currentDt;
+            i_L += di; i_2 = i_L;
+        } else {
+            let resistanceFactor = isSlowMo ? 15 : 45; 
+            let di = (-i_L * resistanceFactor) / L_val * currentDt;
+            i_L += di; i_1 = Math.abs(i_L); i_2 = Math.abs(i_L);
+        }
+        if (i_L < 0.001) { i_L = 0; i_1 = 0; i_2 = 0; }
+    }
+
+    function drawPhysicalMagLines(x, y, current) {
+        let ratio = current / (V / R_branch);
+        if (ratio < 0.01) return;
+        ctx.save();
+        const coilsW = 180;
+        ctx.shadowBlur = 12 * ratio;
+        ctx.shadowColor = "rgba(0, 255, 170, 0.9)";
+        ctx.setLineDash([10, 15]);
+        ctx.lineDashOffset = -magOffset * 2;
+        for (let i = -2; i <= 2; i++) {
+            let alpha = ratio * (1 - Math.abs(i) * 0.2);
+            ctx.strokeStyle = `rgba(0, 255, 170, ${alpha * 0.9})`;
+            ctx.lineWidth = 2.5 * ratio + 0.5;
+            let posY = y + i * 8; 
+            ctx.beginPath();
+            ctx.moveTo(x - 10, posY);
+            ctx.lineTo(x + coilsW + 10, posY);
+            ctx.stroke();
+            ctx.setLineDash([]); 
+            ctx.beginPath();
+            let arrowSize = 7 * ratio + 2;
+            ctx.moveTo(x - 10 + arrowSize, posY - arrowSize/1.5);
+            ctx.lineTo(x - 10, posY);
+            ctx.lineTo(x - 10 + arrowSize, posY + arrowSize/1.5);
+            ctx.stroke();
+            ctx.setLineDash([10, 15]);
+            let arrowPos = (magOffset * 1.2) % (coilsW + 20);
+            ctx.fillStyle = `rgba(180, 255, 220, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(x - 10 + arrowPos, posY, 2 * ratio + 0.5, 0, 7);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function drawResistor(x, y) {
+        ctx.save();
+        ctx.strokeStyle = "#999"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x-40, y); ctx.lineTo(x+40, y); ctx.stroke();
+        let grad = ctx.createLinearGradient(x-20, y-10, x+20, y+10);
+        grad.addColorStop(0, "#d2b48c"); grad.addColorStop(0.5, "#f5deb3"); grad.addColorStop(1, "#d2b48c");
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.roundRect(x-20, y-10, 40, 20, 5); ctx.fill(); ctx.stroke();
+        const colors = ["#8b4513", "#ff0000", "#ffd700"];
+        colors.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x - 12 + i*8, y-10, 4, 20); });
+        ctx.font = "11px Microsoft YaHei"; ctx.fillStyle = "#aaa";
+        ctx.fillText("电阻 R1", x-22, y-15);
+        ctx.restore();
+    }
+
+    function drawRealWire(points) {
+        ctx.save();
+        ctx.lineJoin = "round"; ctx.lineCap = "round";
+        ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 9;
+        ctx.beginPath(); points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y+2) : ctx.lineTo(p.x, p.y+2)); ctx.stroke();
+        ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = 7;
+        ctx.beginPath(); points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 2;
+        ctx.beginPath(); points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y-2) : ctx.lineTo(p.x, p.y-2)); ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawEnhancedBulb(x, y, b, label) {
+        ctx.save();
+        if (b > 0.01) {
+            let glowRadius = 90 * b;
+            let glow = ctx.createRadialGradient(x, y-45, 0, x, y-45, glowRadius);
+            glow.addColorStop(0, `rgba(255, 255, 200, ${b * 0.8})`);
+            glow.addColorStop(0.3, `rgba(255, 180, 50, ${b * 0.4})`);
+            glow.addColorStop(1, "rgba(255, 50, 0, 0)");
+            ctx.fillStyle = glow;
+            ctx.beginPath(); ctx.arc(x, y-45, glowRadius + 30, 0, Math.PI*2); ctx.fill();
+            ctx.shadowBlur = 40 * b;
+            ctx.shadowColor = "#fff7a3";
+        }
+        ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(x, y-45, 28, 0, Math.PI*2); ctx.stroke();
+        if (b > 0.05) {
+            ctx.strokeStyle = `rgba(255, 255, 210, ${b})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(x-5, y-38); ctx.bezierCurveTo(x-5, y-55, x+5, y-55, x+5, y-38); ctx.stroke();
+        }
+        let baseG = ctx.createLinearGradient(x-14, 0, x+14, 0);
+        baseG.addColorStop(0, "#444"); baseG.addColorStop(0.5, "#999"); baseG.addColorStop(1, "#444");
+        ctx.fillStyle = baseG; ctx.fillRect(x-14, y-22, 28, 22);
+        ctx.font = "bold 13px Microsoft YaHei"; ctx.fillStyle = "#ccc"; 
+        ctx.fillText(label, x - 25, y - 85);
+        ctx.restore();
+    }
+
+    function drawCoil(startX, y, current) {
+        const turns = 12, turnW = 15, radiusY = 26, wireW = 6;
+        drawPhysicalMagLines(startX, y, current); 
+        ctx.save();
+        for (let i = 0; i < turns; i++) {
+            let xOff = startX + i * turnW;
+            ctx.beginPath(); ctx.strokeStyle = "#431"; ctx.lineWidth = wireW-1;
+            for (let a = Math.PI/2; a <= 1.5*Math.PI; a += 0.2) { ctx.lineTo(xOff + (a/(Math.PI*2))*turnW, y + Math.sin(a)*radiusY); }
+            ctx.stroke();
+        }
+        for (let i = 0; i < turns; i++) {
+            let xOff = startX + i * turnW;
+            let g = ctx.createLinearGradient(0, y-radiusY, 0, y+radiusY);
+            g.addColorStop(0, "#b87333"); g.addColorStop(0.4, "#ffbc73"); g.addColorStop(1, "#8a4d16");
+            ctx.strokeStyle = g; ctx.lineWidth = wireW;
+            ctx.beginPath();
+            for (let a = -Math.PI/2; a <= Math.PI/2; a += 0.2) { ctx.lineTo(xOff + (a/(Math.PI*2))*turnW, y + Math.sin(a)*radiusY); }
+            ctx.stroke();
+        }
+        ctx.font = "12px Microsoft YaHei"; ctx.fillStyle = "#aaa";
+        ctx.fillText("线圈 L", startX + 60, y - 40);
+        ctx.restore();
+    }
+
+    function drawFlow(points, b) {
+        if (b < 0.02) return;
+        ctx.save();
+        ctx.fillStyle = `rgba(0, 242, 255, ${b})`;
+        ctx.shadowBlur = 5 * b; ctx.shadowColor = "cyan";
+        for (let j = 0; j < points.length - 1; j++) {
+            let p1 = points[j], p2 = points[j+1];
+            let dx = p2.x-p1.x, dy = p2.y-p1.y, len = Math.hypot(dx, dy);
+            let ux = dx/len, uy = dy/len;
+            for (let i = 0; i <= len/40; i++) {
+                let d = (i*40 + flowOffset) % len;
+                let px = p1.x+ux*d, py = p1.y+uy*d;
+                ctx.beginPath(); ctx.arc(px, py, 2.5*b, 0, 7); ctx.fill();
+                ctx.beginPath(); ctx.lineWidth=1.5 * b; ctx.strokeStyle=`rgba(0,242,255,${b})`;
+                ctx.moveTo(px-ux*6-uy*4, py-uy*6+ux*4); ctx.lineTo(px, py); ctx.lineTo(px-ux*6+uy*4, py-uy*6-ux*4); ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+
+    function drawPowerAndSwitch() {
+        ctx.save();
+        const px = 360, py = 400;
+        // 电池主体：右侧为正（红），左侧为负（蓝）
+        let batGrad = ctx.createLinearGradient(px, py, px+80, py);
+        batGrad.addColorStop(0, "#00c"); batGrad.addColorStop(0.4, "#006"); 
+        batGrad.addColorStop(0.6, "#e00"); batGrad.addColorStop(1, "#c00"); 
+        ctx.fillStyle = batGrad;
+        ctx.roundRect(px, py, 80, 40, 5); ctx.fill();
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = "white"; ctx.font = "bold 20px Arial";
+        ctx.fillText("-", px + 12, py + 26); ctx.fillText("+", px + 58, py + 28);
+        ctx.font = "12px Microsoft YaHei"; ctx.fillStyle = "#aaa";
+        ctx.fillText("直流电源", px + 15, py + 58);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(280, 420);
+        ctx.fillStyle = "#333"; ctx.fillRect(-10, -8, 75, 16);
+        ctx.rotate(isClosed ? 0 : -Math.PI/4);
+        if(isClosed) {
+            ctx.shadowBlur = 15; ctx.shadowColor = "#00ff88";
+            ctx.fillStyle = "#00ff88";
+        } else {
+            ctx.shadowBlur = 5; ctx.shadowColor = "#ff4444";
+            ctx.fillStyle = "#ff4444";
+        }
+        ctx.fillRect(0, -4, 60, 8);
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(0, -4, 60, 8);
+        ctx.restore();
+        ctx.font = "12px Microsoft YaHei"; ctx.fillStyle = "#aaa";
+        ctx.fillText("开关 S", 265, 460);
+    }
+
+    function draw() {
+        updatePhysics();
+        let s = isSlowMo ? 0.4 : 1;
+        flowOffset = (flowOffset + 2.5*s) % 1000;
+        magOffset = (magOffset + (i_L*4)*s) % 1000;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const mainCircuit = [{x:150, y:420}, {x:150, y:120}, {x:750, y:120}, {x:750, y:420}, {x:150, y:420}];
+        const middleBranch = [{x:150, y:270}, {x:750, y:270}];
+        drawRealWire(mainCircuit); drawRealWire(middleBranch);
+        
+        let b1 = Math.pow(i_1 / (V/R_branch), 0.7);
+        let b2 = Math.pow(i_2 / (V/R_branch), 0.7);
+
+        if (isClosed) {
+            drawFlow([{x:440, y:420}, {x:750, y:420}, {x:750, y:270}, {x:750, y:120}, {x:150, y:120}, {x:150, y:270}, {x:150, y:420}, {x:280, y:420}], 1);
+            drawFlow([{x:750, y:270}, {x:150, y:270}], b2);
+        } else if (i_L > 0.01) {
+            drawFlow([{x:750, y:270}, {x:150, y:270}, {x:150, y:120}, {x:750, y:120}, {x:750, y:270}], b2);
+        }
+
+        drawResistor(300, 120); 
+        drawEnhancedBulb(580, 120, b1, "灯泡 A1");
+        drawEnhancedBulb(580, 270, b2, "灯泡 A2");
+        drawCoil(220, 270, i_L);
+        drawPowerAndSwitch();
+
+        requestAnimationFrame(draw);
+    }
+    draw();
+</script>
+</body>
+</html>

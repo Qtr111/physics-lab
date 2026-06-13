@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>LC 振荡电路 - 实验室仿真系统</title>
+    <style>
+        :root {
+            --bg-color: #0a0e14;
+            --panel-bg: rgba(20, 26, 35, 0.8);
+            --accent-cyan: #00f2ff;
+            --accent-red: #ff4d4d;
+            --accent-blue: #3399ff;
+            --text-main: #e0e6ed;
+            --grid-color: rgba(0, 242, 255, 0.05);
+        }
+
+        body { 
+            font-family: 'Segoe UI', "Microsoft YaHei", sans-serif; 
+            background-color: var(--bg-color); 
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), 
+                              linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 30px 30px;
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 20px; color: var(--text-main); margin: 0;
+        }
+
+        h2 { 
+            margin-bottom: 20px; color: var(--accent-cyan); 
+            text-transform: uppercase; letter-spacing: 3px;
+            text-shadow: 0 0 15px rgba(0, 242, 255, 0.5);
+        }
+
+        .main-layout { 
+            display: flex; flex-direction: column; gap: 25px; align-items: center; 
+            background: var(--panel-bg); padding: 30px; border-radius: 16px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        canvas { 
+            background: #05070a; border: 1px solid #1a222d; 
+            border-radius: 4px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .controls { 
+            margin-top: 25px; display: flex; gap: 20px; align-items: center; 
+            padding: 15px 30px; background: rgba(255,255,255,0.03); 
+            border-radius: 50px; border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        button { 
+            padding: 10px 24px; font-size: 14px; cursor: pointer; border: 1px solid var(--accent-cyan); 
+            border-radius: 4px; background: transparent; color: var(--accent-cyan);
+            transition: 0.3s; font-weight: bold;
+        }
+
+        button:hover { 
+            background: var(--accent-cyan); color: #000; 
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
+
+        #resetBtn { border-color: var(--accent-red); color: var(--accent-red); }
+        #resetBtn:hover { background: var(--accent-red); color: #000; box-shadow: 0 0 15px var(--accent-red); }
+
+        input[type=range] { 
+            -webkit-appearance: none; background: #1a222d; height: 4px; border-radius: 2px; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px; background: var(--accent-cyan);
+            border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        span { font-size: 14px; opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <h2>LC 振荡电路</h2>
+
+    <div class="main-layout">
+        <canvas id="circuitCanvas" width="600" height="300"></canvas>
+        <canvas id="graphCanvas" width="600" height="300"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="playBtn">暂停 / 继续</button>
+        <button id="resetBtn">重置系统</button>
+        <span>仿真速度：<input type="range" id="speedRange" min="0.1" max="1.0" step="0.05" value="0.4"></span>
+    </div>
+
+    <script>
+        const cCanvas = document.getElementById('circuitCanvas');
+        const ctx = cCanvas.getContext('2d');
+        const gCanvas = document.getElementById('graphCanvas');
+        const gCtx = gCanvas.getContext('2d');
+        const playBtn = document.getElementById('playBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedRange = document.getElementById('speedRange');
+
+        let isPaused = false;
+        let time = 0;
+        let history = []; 
+
+        const omega = 1; 
+        const maxQ = 60;
+        const maxI = maxQ * omega;
+        const maxTime = 8 * Math.PI; 
+
+        function drawGrid(context, w, h) {
+            context.strokeStyle = "rgba(0, 242, 255, 0.03)";
+            context.lineWidth = 1;
+            for(let x=0; x<w; x+=30) { context.beginPath(); context.moveTo(x,0); context.lineTo(x,h); context.stroke(); }
+            for(let y=0; y<h; y+=30) { context.beginPath(); context.moveTo(0,y); context.lineTo(w,y); context.stroke(); }
+        }
+
+        function drawChargeBall(x, y, color, symbol) {
+            ctx.save();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "white";
+            ctx.font = "bold 11px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(symbol, x, y + 0.5);
+            ctx.restore();
+        }
+
+        function drawVerticalCoil(x, startY, iValue) {
+            const turns = 10;
+            const turnH = 14; 
+            const radiusX = 25;
+            const wireW = 6;
+            const absI = Math.abs(iValue);
+            const energyRatio = Math.pow(absI / maxI, 1.5); 
+            
+            if (energyRatio > 0.02) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(0, 242, 255, ${0.2 + energyRatio * 0.8})`; 
+                ctx.shadowBlur = 20 * energyRatio;
+                ctx.shadowColor = "#00f2ff";
+                ctx.lineWidth = 1.5 + energyRatio * 2;
+                for (let m = -1; m <= 1; m++) {
+                    let posX = x + m * 10;
+                    ctx.beginPath();
+                    ctx.moveTo(posX, startY - 20);
+                    ctx.lineTo(posX, startY + turns * turnH + 20);
+                    ctx.stroke();
+                    let arrowY = iValue > 0 ? startY - 15 : startY + turns * turnH + 15;
+                    let dir = iValue > 0 ? -1 : 1;
+                    ctx.beginPath();
+                    ctx.moveTo(posX - 5, arrowY - 7 * dir);
+                    ctx.lineTo(posX, arrowY);
+                    ctx.lineTo(posX + 5, arrowY - 7 * dir);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            const points = [];
+            for (let t = -Math.PI/2; t <= turns * 2 * Math.PI - Math.PI/2 + 0.01; t += 0.05) {
+                points.push({
+                    x: x + Math.cos(t) * radiusX,
+                    y: startY + ((t + Math.PI/2) / (2 * Math.PI)) * turnH + Math.sin(t) * (turnH * 0.3),
+                    isFront: Math.sin(t) >= -0.05 
+                });
+            }
+
+            ctx.save();
+            ctx.strokeStyle = "#6b4226"; 
+            ctx.lineWidth = wireW - 1.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            let drawing = false;
+            for (let p of points) {
+                if (!p.isFront) {
+                    if (!drawing) { ctx.moveTo(p.x, p.y); drawing = true; }
+                    else { ctx.lineTo(p.x, p.y); }
+                } else { if (drawing) { ctx.lineTo(p.x, p.y); drawing = false; } }
+            }
+            ctx.stroke();
+
+            let g = ctx.createLinearGradient(x - radiusX, 0, x + radiusX, 0);
+            g.addColorStop(0, "#8a4d16");
+            g.addColorStop(0.2, "#ffcc88");
+            g.addColorStop(0.5, "#d98d36");
+            g.addColorStop(1, "#542b0a");
+            
+            ctx.strokeStyle = g;
+            ctx.lineWidth = wireW;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            drawing = false;
+            for (let p of points) {
+                if (p.isFront) {
+                    if (!drawing) { ctx.moveTo(p.x, p.y); drawing = true; }
+                    else { ctx.lineTo(p.x, p.y); }
+                } else { if (drawing) { ctx.lineTo(p.x, p.y); drawing = false; } }
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCircuit(q, i) {
+            ctx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+            drawGrid(ctx, cCanvas.width, cCanvas.height);
+            
+            ctx.save();
+            ctx.strokeStyle = '#3d4b5c';
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = "rgba(0,242,255,0.2)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(150, 50); ctx.lineTo(450, 50); 
+            ctx.lineTo(450, 120); ctx.moveTo(450, 180); ctx.lineTo(450, 250); 
+            ctx.lineTo(150, 250); 
+            ctx.lineTo(150, 220); ctx.moveTo(150, 80); ctx.lineTo(150, 50); 
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = '#5c6d82';
+            ctx.fillRect(420, 120, 60, 8); ctx.fillRect(420, 172, 60, 8); 
+
+            const chargeCount = Math.abs(Math.round(q / 12));
+            for(let j=0; j<chargeCount; j++) {
+                drawChargeBall(430 + j*13, 110, q > 0 ? '#ff4d4d' : '#3399ff', q > 0 ? '+' : '-');
+                drawChargeBall(430 + j*13, 190, q > 0 ? '#3399ff' : '#ff4d4d', q > 0 ? '-' : '+');
+            }
+
+            drawVerticalCoil(150, 80, i);
+
+            if (Math.abs(i) > 0.1) {
+                const centerX = 300; 
+                ctx.strokeStyle = i > 0 ? '#ff4d4d' : '#3399ff';
+                ctx.lineWidth = 3;
+                let dir = i > 0 ? 1 : -1;
+                [50, 250].forEach(y => {
+                    let d = y === 50 ? dir : -dir;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, y); ctx.lineTo(centerX - 12 * d, y - 6);
+                    ctx.moveTo(centerX, y); ctx.lineTo(centerX - 12 * d, y + 6);
+                    ctx.stroke();
+                });
+            }
+        }
+
+        function drawGraphs() {
+            gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
+            drawGrid(gCtx, gCanvas.width, gCanvas.height);
+            const startX = 70, graphW = 480;
+            const qY = 75, iY = 225;
+
+            gCtx.lineWidth = 1.5;
+            [qY, iY].forEach((y) => {
+                gCtx.strokeStyle = "rgba(255,255,255,0.2)";
+                gCtx.beginPath();
+                gCtx.moveTo(startX, y - 55); gCtx.lineTo(startX, y + 55);
+                gCtx.moveTo(startX, y); gCtx.lineTo(startX + graphW, y);
+                gCtx.stroke();
+                gCtx.fillStyle = "rgba(255,255,255,0.5)";
+                gCtx.beginPath(); gCtx.arc(startX, y, 3, 0, 7); gCtx.fill();
+            });
+            
+            gCtx.font = "bold 12px 'Microsoft YaHei'";
+            gCtx.fillStyle = "#ff4d4d"; gCtx.fillText("q (电荷量)", 10, 35);
+            gCtx.fillStyle = "#3399ff"; gCtx.fillText("i (电流强度)", 10, 185);
+
+            const drawCurve = (type, baseline, color, maxVal, invert = false) => {
+                gCtx.save();
+                gCtx.strokeStyle = color;
+                gCtx.shadowBlur = 8; gCtx.shadowColor = color;
+                gCtx.beginPath();
+                history.forEach((data, index) => {
+                    const x = startX + (data.t / maxTime) * graphW;
+                    // 如果需要反相，将值取负
+                    const val = invert ? -data[type] : data[type];
+                    const y = baseline - (val / maxVal) * 45;
+                    if (index === 0) gCtx.moveTo(x, y); else gCtx.lineTo(x, y);
+                });
+                gCtx.stroke();
+                gCtx.restore();
+            };
+
+            drawCurve('q', qY, '#ff4d4d', maxQ, false);
+            // 修改点：电流 i 在绘图时反相，以初始方向为正
+            drawCurve('i', iY, '#3399ff', maxI, true);
+        }
+
+        function animate() {
+            if (!isPaused) {
+                const step = parseFloat(speedRange.value) / 40; 
+                time += step;
+                const q = maxQ * Math.cos(omega * time);
+                const i = -maxI * Math.sin(omega * time);
+                if (time <= maxTime) history.push({t: time, q: q, i: i});
+                drawCircuit(q, i);
+                drawGraphs();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        playBtn.onclick = () => { isPaused = !isPaused; };
+        resetBtn.onclick = () => {
+            time = 0; history = [];
+            if (isPaused) { drawCircuit(maxQ, 0); drawGraphs(); }
+        };
+        animate();
+    </script>
+</body>
+</html>

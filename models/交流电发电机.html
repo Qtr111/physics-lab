@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>交流发电机</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas.webgl {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 15px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            color: #333;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+            z-index: 10;
+            background: rgba(224,229,236,0.6);
+            padding: 5px 0;
+            backdrop-filter: blur(4px);
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 12px 18px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 12px;
+            z-index: 20;
+            backdrop-filter: blur(2px);
+            flex-wrap: wrap;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+        }
+        button:hover { background-color: #45a049; }
+        #toggleArrowsBtn {
+            background-color: #d96f14;
+        }
+        #toggleArrowsBtn:hover { background-color: #c06010; }
+        #resetBtn {
+            background-color: #ff9800;
+        }
+        #resetBtn:hover { background-color: #e68900; }
+        #toggleChartBtn {
+            background-color: #3a6ea5;
+        }
+        #toggleChartBtn:hover { background-color: #2d5a8c; }
+        .key-hint {
+            font-size: 12px;
+            color: #555;
+            background: #f0f0f0;
+            border-radius: 6px;
+            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .key-hint kbd {
+            background: #333;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .chart-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 760px;
+            background: rgba(30,30,40,0.92);
+            backdrop-filter: blur(8px);
+            border-radius: 12px;
+            padding: 12px 18px 18px 18px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 15;
+            font-family: monospace;
+            pointer-events: none;
+            display: none;
+        }
+        .chart-title {
+            color: #eee;
+            font-size: 15px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        canvas#currentChart {
+            width: 100%;
+            height: auto;
+            background: #1e1e2a;
+            border-radius: 6px;
+            display: block;
+            pointer-events: auto;
+        }
+        .chart-note {
+            color: #ccc;
+            font-size: 11px;
+            text-align: center;
+            margin-top: 8px;
+        }
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: #ff6666;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            font-family: monospace;
+            display: none;
+        }
+        @media (max-width: 900px) {
+            .chart-container { width: 90%; right: 5%; left: 5%; bottom: 10px; padding: 10px; }
+            .controls { padding: 8px 12px; gap: 8px; }
+            button { padding: 6px 12px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>交流发电机 (AC Generator)</h2>
+    </div>
+    <div class="controls">
+        <button id="playPauseBtn">▶ 播放旋转</button>
+        <button id="resetBtn">🔄 重置</button>
+        <button id="toggleArrowsBtn">⚫ 显示电流箭头</button>
+        <button id="toggleChartBtn">📊 显示波形图</button>
+        <div class="key-hint"></div>
+    </div>
+    <div class="chart-container" id="chartContainer">
+        <div class="chart-title">📈 感应电流 i(t)</div>
+        <canvas id="currentChart" width="720" height="300" style="width:100%; height:auto; max-width:720px; aspect-ratio:720/300"></canvas>
+    </div>
+    <div id="error-message">⚠️ 您的浏览器不支持WebGL或Three.js加载失败，请尝试使用现代浏览器。</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        (function() {
+            // 兼容性检测：确保Three.js已加载
+            if (typeof THREE === 'undefined') {
+                document.getElementById('error-message').style.display = 'block';
+                console.error('Three.js 未加载');
+                return;
+            }
+            // 等待DOM完全加载
+            window.addEventListener('DOMContentLoaded', function() {
+                // 尝试获取WebGL上下文
+                var canvasTest = document.createElement('canvas');
+                var gl = canvasTest.getContext('webgl') || canvasTest.getContext('experimental-webgl');
+                if (!gl) {
+                    document.getElementById('error-message').style.display = 'block';
+                    console.error('WebGL 不支持');
+                    return;
+                }
+
+                // ================= 1. 初始化 Three.js 场景 =================
+                var scene = new THREE.Scene();
+                scene.background = new THREE.Color('#e0e5ec');
+
+                var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+                camera.position.set(12, 8, 15);
+
+                var renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                document.body.appendChild(renderer.domElement);
+
+                var controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.target.set(0, 0, 2);
+                controls.update();
+
+                // 增强光照
+                var ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+                scene.add(ambientLight);
+                var dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+                dirLight.position.set(5, 10, 7);
+                scene.add(dirLight);
+                var pointLight = new THREE.PointLight(0xffffff, 0.8);
+                pointLight.position.set(-5, -5, -5);
+                scene.add(pointLight);
+
+                // ================= 工具函数：实心箭头生成器 =================
+                function createSolidArrow(dir, origin, length, colorHex, isCurrent) {
+                    var group = new THREE.Group();
+                    var mat = new THREE.MeshStandardMaterial({ 
+                        color: colorHex, 
+                        transparent: false, 
+                        opacity: 1.0,
+                        roughness: 0.5,
+                        metalness: 0.2
+                    });
+                    
+                    var headLen = isCurrent ? 0.45 : 0.55; 
+                    var headWid = isCurrent ? 0.18 : 0.22;
+                    var shaftThick = isCurrent ? 0.05 : 0.035;
+                    var shaftLen = length - headLen;
+                    
+                    var shaftGeo = new THREE.CylinderGeometry(shaftThick, shaftThick, shaftLen, 12);
+                    shaftGeo.translate(0, shaftLen / 2, 0);
+                    var shaft = new THREE.Mesh(shaftGeo, mat);
+                    
+                    var headGeo = new THREE.ConeGeometry(headWid, headLen, 16);
+                    headGeo.translate(0, shaftLen + headLen / 2, 0);
+                    var head = new THREE.Mesh(headGeo, mat);
+                    
+                    group.add(shaft);
+                    group.add(head);
+                    
+                    var yAxis = new THREE.Vector3(0, 1, 0);
+                    group.quaternion.setFromUnitVectors(yAxis, dir.clone().normalize());
+                    group.position.copy(origin);
+                    
+                    group.userData = { 
+                        forwardDir: dir.clone().normalize(),
+                        mat: mat
+                    };
+                    
+                    group.setDirection = function(newDir) {
+                        this.quaternion.setFromUnitVectors(yAxis, newDir.clone().normalize());
+                    };
+                    
+                    return group;
+                }
+
+                function createTextTexture(text, bgColor, textColor) {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = 256; canvas.height = 256;
+                    var ctx = canvas.getContext('2d');
+                    ctx.fillStyle = bgColor;
+                    ctx.fillRect(0, 0, 256, 256);
+                    ctx.font = 'bold 150px Arial';
+                    ctx.fillStyle = textColor;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(text, 128, 128);
+                    return new THREE.CanvasTexture(canvas);
+                }
+
+                // ================= 2. 磁极 =================
+                var magnetGeo = new THREE.BoxGeometry(1.5, 4, 4);
+                
+                var nPoleMat = new THREE.MeshStandardMaterial({ 
+                    map: createTextTexture('N', '#aa1111', '#ffffff'),
+                    metalness: 0.4,
+                    roughness: 0.4
+                });
+                var nPole = new THREE.Mesh(magnetGeo, nPoleMat);
+                nPole.position.set(-4, 0, 0);
+                scene.add(nPole);
+
+                var sPoleMat = new THREE.MeshStandardMaterial({ 
+                    map: createTextTexture('S', '#1133aa', '#ffffff'),
+                    metalness: 0.4,
+                    roughness: 0.4
+                });
+                var sPole = new THREE.Mesh(magnetGeo, sPoleMat);
+                sPole.position.set(4, 0, 0);
+                scene.add(sPole);
+
+                // 磁感线：红色虚线，末端添加指向S极的圆锥箭头（箭头向N极偏移0.3，避免被S极遮挡）
+                var arrowPositions = [
+                    { start: [-3, 1, 1], end: [3.2, 1, 1] },
+                    { start: [-3, 0, 1], end: [3.2, 0, 1] },
+                    { start: [-3, -1, 1], end: [3.2, -1, 1] },
+                    { start: [-3, 1, -1], end: [3.2, 1, -1] },
+                    { start: [-3, 0, -1], end: [3.2, 0, -1] },
+                    { start: [-3, -1, -1], end: [3.2, -1, -1] },
+                    { start: [-3, 1, 0], end: [3.2, 1, 0] },
+                    { start: [-3, 0, 0], end: [3.2, 0, 0] },
+                    { start: [-3, -1, 0], end: [3.2, -1, 0] }
+                ];
+                
+                arrowPositions.forEach(function(pos) {
+                    var start = new THREE.Vector3(pos.start[0], pos.start[1], pos.start[2]);
+                    var end = new THREE.Vector3(pos.end[0], pos.end[1], pos.end[2]);
+                    var direction = new THREE.Vector3().subVectors(end, start).normalize();
+                    
+                    // 创建虚线的主体线
+                    var points = [start, end];
+                    var geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    var lineMaterial = new THREE.LineDashedMaterial({ color: 0xff3333, dashSize: 0.15, gapSize: 0.1 });
+                    var line = new THREE.Line(geometry, lineMaterial);
+                    line.computeLineDistances();
+                    scene.add(line);
+                    
+                    // 添加圆锥箭头头（指向S极），但位置向N极方向偏移0.3单位，使箭头尖端可见
+                    var offset = 0.3;
+                    var arrowPos = end.clone().sub(direction.clone().multiplyScalar(offset));
+                    var arrowHead = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.12, 0.35, 8),
+                        new THREE.MeshStandardMaterial({ color: 0xff3333, metalness: 0.3, roughness: 0.4 })
+                    );
+                    arrowHead.position.copy(arrowPos);
+                    var quaternion = new THREE.Quaternion().setFromUnitVectors(
+                        new THREE.Vector3(0, 1, 0),
+                        direction
+                    );
+                    arrowHead.quaternion.copy(quaternion);
+                    scene.add(arrowHead);
+                });
+
+                // ================= 3. 转子系统 =================
+                var rotorGroup = new THREE.Group();
+                scene.add(rotorGroup);
+
+                var axisGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -4), new THREE.Vector3(0, 0, 10)]);
+                var axisLine = new THREE.Line(axisGeo, new THREE.LineDashedMaterial({ color: 0x666666, dashSize: 0.2, gapSize: 0.1 }));
+                axisLine.computeLineDistances();
+                scene.add(axisLine);
+
+                function createRotorWire(points, colorHex, emissiveHex) {
+                    var curve = new THREE.CatmullRomCurve3(points);
+                    var geo = new THREE.TubeGeometry(curve, 32, 0.08, 12, false);
+                    return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ 
+                        color: colorHex,
+                        metalness: 0.8, 
+                        roughness: 0.2,
+                        emissive: emissiveHex
+                    }));
+                }
+
+                var wireCD = createRotorWire([
+                    new THREE.Vector3(0, 1.5, -2),
+                    new THREE.Vector3(0, 1.5, 2),
+                    new THREE.Vector3(0, 0.6, 3),
+                    new THREE.Vector3(0, 0.6, 6)
+                ], 0xff4411, 0x331100); 
+                rotorGroup.add(wireCD);
+
+                var wireAB = createRotorWire([
+                    new THREE.Vector3(0, -1.5, -2),
+                    new THREE.Vector3(0, -1.5, 2),
+                    new THREE.Vector3(0, -1.5, 4),
+                    new THREE.Vector3(0, -0.6, 8)
+                ], 0x1166ff, 0x001133);
+                rotorGroup.add(wireAB);
+
+                rotorGroup.add(createRotorWire([new THREE.Vector3(0, 1.5, -2), new THREE.Vector3(0, -1.5, -2)], 0x666666, 0x111111));
+
+                var brushRingGeo = new THREE.TorusGeometry(0.75, 0.08, 32, 64);
+                var brassMat = new THREE.MeshStandardMaterial({ 
+                    color: 0xffd700, 
+                    metalness: 1.0, 
+                    roughness: 0.15,
+                    emissive: 0x443300
+                }); 
+                
+                var brushRingLeft = new THREE.Mesh(brushRingGeo, brassMat);
+                brushRingLeft.position.set(0, 0, 6);
+                scene.add(brushRingLeft);
+                
+                var brushRingRight = new THREE.Mesh(brushRingGeo, brassMat);
+                brushRingRight.position.set(0, 0, 8);
+                scene.add(brushRingRight);
+                
+                var carbonGeo = new THREE.BoxGeometry(0.3, 0.4, 0.4);
+                var carbonMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x444444, 
+                    metalness: 0.5, 
+                    roughness: 0.6,
+                    emissive: 0x111111
+                });
+                
+                var carbonBrushLeft = new THREE.Mesh(carbonGeo, carbonMat);
+                carbonBrushLeft.position.set(0.85, 0, 6);
+                scene.add(carbonBrushLeft);
+                
+                var carbonBrushRight = new THREE.Mesh(carbonGeo, carbonMat);
+                carbonBrushRight.position.set(0.85, 0, 8);
+                scene.add(carbonBrushRight);
+
+                function createResistorTexture() {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = 256; canvas.height = 256;
+                    var ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#f0d9b5';
+                    ctx.fillRect(0, 0, 256, 256);
+                    ctx.fillStyle = '#cc0000'; ctx.fillRect(0, 40, 256, 15);
+                    ctx.fillStyle = '#800080'; ctx.fillRect(0, 75, 256, 15);
+                    ctx.fillStyle = '#000000'; ctx.fillRect(0, 110, 256, 15);
+                    ctx.fillStyle = '#d4af37'; ctx.fillRect(0, 190, 256, 15);
+                    return new THREE.CanvasTexture(canvas);
+                }
+
+                var resGeo = new THREE.CylinderGeometry(0.35, 0.35, 1.5, 32);
+                var resMat = new THREE.MeshStandardMaterial({ 
+                    map: createResistorTexture(), 
+                    roughness: 0.8, 
+                    metalness: 0.2,
+                    emissive: 0x111111
+                });
+                var resistor = new THREE.Mesh(resGeo, resMat);
+                resistor.position.set(3, -3, 7);
+                resistor.rotation.x = Math.PI / 2; 
+                scene.add(resistor);
+                
+                var leftFaceCenter = new THREE.Vector3(3, -3, 6.25);
+                var rightFaceCenter = new THREE.Vector3(3, -3, 7.75);
+                var commonX = 2.0;
+                var dropY = -3;
+                
+                var leftPathPoints = [
+                    new THREE.Vector3(0.9, 0, 6),
+                    new THREE.Vector3(commonX, 0, 6),
+                    new THREE.Vector3(commonX, dropY, 6),
+                    leftFaceCenter
+                ];
+                var rightPathPoints = [
+                    new THREE.Vector3(0.9, 0, 8),
+                    new THREE.Vector3(commonX, 0, 8),
+                    new THREE.Vector3(commonX, dropY, 8),
+                    rightFaceCenter
+                ];
+
+                function createThickWire(points) {
+                    var curve = new THREE.CatmullRomCurve3(points, false, 'chordal', 0.5);
+                    var geo = new THREE.TubeGeometry(curve, 64, 0.07, 12, false);
+                    var mat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.3, emissive: 0x111111 });
+                    return new THREE.Mesh(geo, mat);
+                }
+                
+                scene.add(createThickWire(leftPathPoints));
+                scene.add(createThickWire(rightPathPoints));
+                
+                // ================= 4. 电流箭头 =================
+                var currentArrowsGroup = new THREE.Group();
+                rotorGroup.add(currentArrowsGroup);
+                var arrowsList = [];
+
+                function addCurrentArrow(posX, posY, posZ, dirX, dirY, dirZ) {
+                    var origin = new THREE.Vector3(posX, posY, posZ);
+                    var dir = new THREE.Vector3(dirX, dirY, dirZ);
+                    var arrow = createSolidArrow(dir, origin, 1.4, 0xffe500, true); 
+                    currentArrowsGroup.add(arrow);
+                    arrowsList.push(arrow);
+                    return arrow;
+                }
+
+                addCurrentArrow(0, -1.9, 0, 0, 0, 1);
+                addCurrentArrow(0, 1.9, 0, 0, 0, -1);
+
+                var CURRENT_THRESHOLD = 0.05;
+                
+                function updateArrows(currentValue, globalArrowsVisible) {
+                    var absCurrent = Math.abs(currentValue);
+                    var shouldShow = globalArrowsVisible && (absCurrent > CURRENT_THRESHOLD);
+                    var dirSign = (currentValue >= 0) ? -1 : 1;
+                    
+                    arrowsList.forEach(function(arrow) {
+                        var preset = arrow.userData.forwardDir;
+                        var actualDir = preset.clone().multiplyScalar(dirSign);
+                        arrow.setDirection(actualDir);
+                        arrow.visible = shouldShow;
+                    });
+                }
+
+                // ================= 速度箭头 =================
+                var velocityArrows = [];
+                function createVelocityArrow() {
+                    var arrow = createSolidArrow(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 1.5, 0x33ffaa, false);
+                    scene.add(arrow);
+                    velocityArrows.push(arrow);
+                    return arrow;
+                }
+                createVelocityArrow();
+                createVelocityArrow();
+
+                function updateVelocityArrows(angleRad) {
+                    var sin = Math.sin(angleRad);
+                    var cos = Math.cos(angleRad);
+                    
+                    var upLocal = new THREE.Vector3(0, 1.5, 0);
+                    var upGlobal = new THREE.Vector3(
+                        upLocal.x * cos - upLocal.y * sin,
+                        upLocal.x * sin + upLocal.y * cos,
+                        upLocal.z
+                    );
+                    var upVelDir = new THREE.Vector3(-upGlobal.y, upGlobal.x, 0).normalize();
+                    
+                    var downLocal = new THREE.Vector3(0, -1.5, 0);
+                    var downGlobal = new THREE.Vector3(
+                        downLocal.x * cos - downLocal.y * sin,
+                        downLocal.x * sin + downLocal.y * cos,
+                        downLocal.z
+                    );
+                    var downVelDir = new THREE.Vector3(-downGlobal.y, downGlobal.x, 0).normalize();
+                    
+                    velocityArrows[0].position.copy(upGlobal);
+                    velocityArrows[0].setDirection(upVelDir);
+                    velocityArrows[1].position.copy(downGlobal);
+                    velocityArrows[1].setDirection(downVelDir);
+                }
+
+                // ================= 5. 电流波形图表 =================
+                var chartCanvas = document.getElementById('currentChart');
+                var ctx = chartCanvas.getContext('2d');
+                var chartWidth = 720, chartHeight = 300;
+                chartCanvas.width = chartWidth;
+                chartCanvas.height = chartHeight;
+
+                var TIME_WINDOW = 28.0;
+                var chartPoints = [];    
+                var simulationTime = 0;
+                var gridDrawn = false;
+                
+                function drawGrid() {
+                    if (!ctx) return;
+                    if (gridDrawn) return; 
+                    
+                    var iMin = -1.2, iMax = 1.2;
+                    
+                    ctx.save();
+                    ctx.fillStyle = '#1e1e2a';
+                    ctx.fillRect(0, 0, chartWidth, chartHeight);
+                    ctx.strokeStyle = '#444';
+                    ctx.lineWidth = 0.5;
+                    
+                    for (var i = -1; i <= 1; i += 0.5) {
+                        var y = chartHeight - ((i - iMin) / (iMax - iMin)) * chartHeight;
+                        ctx.beginPath();
+                        ctx.moveTo(35, y);
+                        ctx.lineTo(chartWidth - 10, y);
+                        ctx.stroke();
+                    }
+                    
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#ddd';
+                    ctx.lineWidth = 1.5;
+                    ctx.moveTo(35, 10);
+                    ctx.lineTo(35, chartHeight - 10);
+                    ctx.lineTo(chartWidth - 10, chartHeight - 10);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#aaa';
+                    ctx.font = '11px monospace';
+                    for (var i = -1; i <= 1; i += 0.5) {
+                        var y = chartHeight - ((i - iMin) / (iMax - iMin)) * chartHeight;
+                        ctx.fillText(i.toFixed(1), 8, y - 2);
+                    }
+                    
+                    ctx.fillStyle = '#eee';
+                    ctx.font = 'bold 12px monospace';
+                    ctx.fillText('时间 t (s)', chartWidth - 85, chartHeight - 12);
+                    ctx.save();
+                    ctx.translate(18, chartHeight/2);
+                    ctx.rotate(-Math.PI/2);
+                    ctx.fillText('电流 i (A)', -30, 0);
+                    ctx.restore();
+                    
+                    ctx.restore();
+                    gridDrawn = true;
+                }
+                
+                function drawDynamicGrid() {
+                    if (!ctx) return;
+                    var tMin = Math.max(0, simulationTime - TIME_WINDOW);
+                    var tMax = simulationTime;
+                    var timeSpan = TIME_WINDOW;
+                    
+                    ctx.save();
+                    ctx.strokeStyle = '#444';
+                    ctx.lineWidth = 0.5;
+                    
+                    for (var t = Math.ceil(tMin / 2) * 2; t <= tMax; t += 2) {
+                        var x = 35 + ((t - tMin) / timeSpan) * (chartWidth - 45);
+                        if (x >= 35 && x <= chartWidth - 10) {
+                            ctx.beginPath();
+                            ctx.moveTo(x, 10);
+                            ctx.lineTo(x, chartHeight - 10);
+                            ctx.stroke();
+                        }
+                    }
+                    
+                    ctx.fillStyle = '#aaa';
+                    ctx.font = '10px monospace';
+                    for (var t = Math.ceil(tMin / 2) * 2; t <= tMax; t += 2) {
+                        var x = 35 + ((t - tMin) / timeSpan) * (chartWidth - 45);
+                        if (x >= 35 && x <= chartWidth - 10) {
+                            ctx.fillText(t.toFixed(0), x - 6, chartHeight - 5);
+                        }
+                    }
+                    ctx.restore();
+                }
+                
+                function drawWaveform() {
+                    if (!ctx || chartPoints.length === 0) return;
+                    
+                    var iMin = -1.2, iMax = 1.2;
+                    var tMin = Math.max(0, simulationTime - TIME_WINDOW);
+                    var tMax = simulationTime;
+                    var timeSpan = TIME_WINDOW;
+                    
+                    ctx.save();
+                    
+                    var yZero = chartHeight - ((0 - iMin) / (iMax - iMin)) * chartHeight;
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#ffaa66';
+                    ctx.lineWidth = 2.5;
+                    ctx.moveTo(35, yZero);
+                    ctx.lineTo(chartWidth - 10, yZero);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#ffaa66';
+                    ctx.font = 'bold 11px monospace';
+                    ctx.fillText('t (s)', chartWidth - 30, yZero - 5);
+                    
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#ff6666';
+                    ctx.lineWidth = 2.5;
+                    
+                    var first = true;
+                    for (var idx = 0; idx < chartPoints.length; idx++) {
+                        var point = chartPoints[idx];
+                        if (point.t < tMin) continue;
+                        if (point.t > tMax) break;
+                        
+                        var x = 35 + ((point.t - tMin) / timeSpan) * (chartWidth - 45);
+                        var y = chartHeight - ((point.i - iMin) / (iMax - iMin)) * chartHeight;
+                        
+                        if (x < 35 || x > chartWidth - 10) continue;
+                        
+                        if (first) {
+                            ctx.moveTo(x, y);
+                            first = false;
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    ctx.stroke();
+                    
+                    if (chartPoints.length > 0) {
+                        var last = chartPoints[chartPoints.length-1];
+                        if (last.t >= tMin) {
+                            var xLast = 35 + ((last.t - tMin) / timeSpan) * (chartWidth - 45);
+                            var yLast = chartHeight - ((last.i - iMin) / (iMax - iMin)) * chartHeight;
+                            if (xLast >= 35 && xLast <= chartWidth - 10) {
+                                ctx.fillStyle = '#ff8888';
+                                ctx.beginPath();
+                                ctx.arc(xLast, yLast, 4, 0, 2*Math.PI);
+                                ctx.fill();
+                                ctx.fillStyle = '#fff';
+                                ctx.font = 'bold 11px monospace';
+                                ctx.fillText('i = ' + last.i.toFixed(2) + ' A', xLast + 8, yLast - 6);
+                            }
+                        }
+                    }
+                    ctx.restore();
+                }
+                
+                function updateChart() {
+                    drawGrid();
+                    if (gridDrawn) {
+                        ctx.save();
+                        ctx.fillStyle = '#1e1e2a';
+                        ctx.fillRect(35, 10, chartWidth - 45, chartHeight - 20);
+                        drawDynamicGrid();
+                        drawWaveform();
+                        ctx.restore();
+                    } else {
+                        drawGrid();
+                        drawDynamicGrid();
+                        drawWaveform();
+                    }
+                }
+                
+                function addDataPoint(currentTime, currentValue) {
+                    simulationTime = currentTime;
+                    chartPoints.push({ t: currentTime, i: currentValue });
+                    var tMin = Math.max(0, simulationTime - TIME_WINDOW);
+                    while (chartPoints.length > 0 && chartPoints[0].t < tMin - 5) {
+                        chartPoints.shift();
+                    }
+                    updateChart();
+                }
+                
+                function resetChart() {
+                    chartPoints = [];
+                    simulationTime = 0;
+                    gridDrawn = false; 
+                    addDataPoint(0, Math.sin(0));
+                }
+                
+                // ================= 6. 动画与状态控制 =================
+                var isAnimating = false;
+                var angle = 0;
+                
+                var playPauseBtn = document.getElementById('playPauseBtn');
+                var resetBtn = document.getElementById('resetBtn');
+                var toggleArrowsBtn = document.getElementById('toggleArrowsBtn');
+                var toggleChartBtn = document.getElementById('toggleChartBtn');
+                var chartContainer = document.getElementById('chartContainer');
+                
+                var arrowsVisible = false;
+                var chartVisible = false;
+                
+                function updatePlayPauseButton() {
+                    playPauseBtn.textContent = isAnimating ? "⏸ 暂停旋转" : "▶ 播放旋转";
+                }
+                
+                function setAnimating(state) {
+                    if (isAnimating === state) return;
+                    isAnimating = state;
+                    updatePlayPauseButton();
+                }
+                
+                function setArrowsVisibility(visible) {
+                    arrowsVisible = visible;
+                    toggleArrowsBtn.textContent = visible ? "🔴 隐藏电流箭头" : "⚫ 显示电流箭头";
+                    var currentVal = Math.sin(angle);
+                    updateArrows(currentVal, arrowsVisible);
+                }
+                
+                function setChartVisibility(visible) {
+                    chartVisible = visible;
+                    chartContainer.style.display = visible ? 'block' : 'none';
+                    toggleChartBtn.textContent = visible ? "📊 隐藏波形图" : "📊 显示波形图";
+                    if (visible) updateChart();
+                }
+                
+                function resetToInitial() {
+                    isAnimating = false;
+                    updatePlayPauseButton();
+                    angle = 0;
+                    rotorGroup.rotation.z = angle;
+                    resetChart();
+                    var currentVal = Math.sin(angle);
+                    updateArrows(currentVal, arrowsVisible);
+                    updateVelocityArrows(angle);
+                }
+                
+                resetBtn.addEventListener('click', function() { resetToInitial(); });
+                playPauseBtn.addEventListener('click', function() { setAnimating(!isAnimating); });
+                toggleArrowsBtn.addEventListener('click', function() { setArrowsVisibility(!arrowsVisible); });
+                toggleChartBtn.addEventListener('click', function() { setChartVisibility(!chartVisible); });
+                
+                var lastFrameTime = null;
+                function animate() {
+                    var now = performance.now() / 1000;
+                    var delta = 0;
+                    if (lastFrameTime !== null) delta = Math.min(0.05, now - lastFrameTime);
+                    lastFrameTime = now;
+                    
+                    if (isAnimating && delta > 0) {
+                        var angularSpeed = 1.2;
+                        angle += angularSpeed * delta;
+                        rotorGroup.rotation.z = angle;
+                        
+                        var currentValue = Math.sin(angle);
+                        addDataPoint(simulationTime + delta, currentValue);
+                        
+                        updateArrows(currentValue, arrowsVisible);
+                        updateVelocityArrows(angle);
+                    } else if (!isAnimating) {
+                        var currentVal = Math.sin(angle);
+                        updateArrows(currentVal, arrowsVisible);
+                        updateVelocityArrows(angle);
+                    }
+                    
+                    controls.update();
+                    renderer.render(scene, camera);
+                    requestAnimationFrame(animate);
+                }
+                
+                resetToInitial();
+                setArrowsVisibility(false);
+                setChartVisibility(false);
+                
+                lastFrameTime = performance.now() / 1000;
+                animate();
+                
+                window.addEventListener('resize', function() {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
